@@ -180,7 +180,6 @@ export default function CompanyOfferCreate() {
               <Label htmlFor="productUrl">Product URL *</Label>
               <Input
                 id="productUrl"
-                type="url"
                 value={formData.productUrl}
                 onChange={(e) => setFormData({ ...formData, productUrl: e.target.value })}
                 placeholder="https://yourproduct.com"

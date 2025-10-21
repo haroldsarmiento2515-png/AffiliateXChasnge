@@ -98,21 +98,21 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-4">
-            <Link href="/admin/reviews">
+            <Link to="/admin/reviews">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col gap-2" data-testid="button-manage-reviews">
                 <AlertCircle className="h-6 w-6" />
                 <span>Manage Reviews</span>
                 <span className="text-xs text-muted-foreground">View, edit, approve reviews</span>
               </Button>
             </Link>
-            <Link href="/admin/companies">
+            <Link to="/admin/companies">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col gap-2" data-testid="button-manage-companies">
                 <Building2 className="h-6 w-6" />
                 <span>Manage Companies</span>
                 <span className="text-xs text-muted-foreground">Approve or reject companies</span>
               </Button>
             </Link>
-            <Link href="/admin/offers">
+            <Link to="/admin/offers">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col gap-2" data-testid="button-manage-offers">
                 <TrendingUp className="h-6 w-6" />
                 <span>Manage Offers</span>
@@ -135,7 +135,7 @@ export default function AdminDashboard() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Companies waiting for verification
                 </p>
-                <Link href="/admin/companies">
+                <Link to="/admin/companies">
                   <Button variant="outline" className="w-full" data-testid="button-review-companies">
                     Review Companies
                   </Button>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Offers waiting for review
                 </p>
-                <Link href="/admin/offers">
+                <Link to="/admin/offers">
                   <Button variant="outline" className="w-full" data-testid="button-review-offers">
                     Review Offers
                   </Button>

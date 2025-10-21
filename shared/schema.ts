@@ -67,7 +67,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 // Creator profiles
 export const creatorProfiles = pgTable("creator_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
   bio: text("bio"),
   youtubeUrl: varchar("youtube_url"),
   tiktokUrl: varchar("tiktok_url"),
@@ -90,7 +90,7 @@ export const creatorProfilesRelations = relations(creatorProfiles, ({ one }) => 
 // Company profiles
 export const companyProfiles = pgTable("company_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
   legalName: varchar("legal_name").notNull(),
   tradeName: varchar("trade_name"),
   industry: varchar("industry"),
