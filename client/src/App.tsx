@@ -19,6 +19,7 @@ import Settings from "@/pages/settings";
 import PaymentSettings from "@/pages/payment-settings";
 import CompanyDashboard from "@/pages/company-dashboard";
 import CompanyOffers from "@/pages/company-offers";
+import CompanyOfferCreate from "@/pages/company-offer-create";
 import CompanyApplications from "@/pages/company-applications";
 import CompanyCreators from "@/pages/company-creators";
 import CompanyReviews from "@/pages/company-reviews";
@@ -78,6 +79,7 @@ function Router() {
                     <Route path="/" component={CompanyDashboard} />
                     <Route path="/company" component={CompanyDashboard} />
                     <Route path="/company/offers" component={CompanyOffers} />
+                    <Route path="/company/offers/create" component={CompanyOfferCreate} />
                     <Route path="/company/applications" component={CompanyApplications} />
                     <Route path="/company/creators" component={CompanyCreators} />
                     <Route path="/company/analytics" component={Analytics} />
