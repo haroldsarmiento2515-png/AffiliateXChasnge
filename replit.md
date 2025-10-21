@@ -102,7 +102,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### Enhanced Real-Time Messaging System (Latest - October 2025)
+### Admin Review Management Security Hardening (Latest - October 2025)
+
+**Security Improvements:**
+- **Input Validation**: Added Zod validation schemas (`adminReviewUpdateSchema`, `adminNoteSchema`) to prevent mass-assignment vulnerabilities
+- **Field Whitelisting**: Admin review updates only allow editing specific fields (reviewText, ratings) via `.pick()` schema
+- **Excluded Admin Fields**: `insertReviewSchema` explicitly omits admin-only fields (adminNote, isApproved, approvedBy, isHidden, etc.)
+- **Audit Trail Enhancement**: Added `adminNoteUpdatedBy` and `adminNoteUpdatedAt` to track who modified internal notes and when
+- **Server-Side Enforcement**: `isEdited` flag set automatically in storage layer, not via API to prevent client manipulation
+
+**Security Pattern:**
+All admin routes now follow the pattern: Zod validation → role check → storage operation with automatic audit tracking. This ensures only authorized fields can be modified and all admin actions are fully traceable.
+
+### Enhanced Real-Time Messaging System (October 2025)
 
 **UI/UX Improvements:**
 - **Typing Indicators**: Real-time typing status with 3-second timeout and animated bubble display
