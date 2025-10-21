@@ -20,27 +20,20 @@ import PaymentSettings from "@/pages/payment-settings";
 import CompanyDashboard from "@/pages/company-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
 import Onboarding from "@/pages/onboarding";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // Show landing page while loading or not authenticated
+  // Show landing, login, or register pages while loading or not authenticated
   if (isLoading || !isAuthenticated) {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
         <Route component={Landing} />
-      </Switch>
-    );
-  }
-
-  // Show onboarding for brand new users who haven't selected a role yet
-  // We detect this by checking if they need to complete onboarding
-  // Note: After selecting role in onboarding, user will be redirected to appropriate dashboard
-  if (window.location.pathname === '/onboarding') {
-    return (
-      <Switch>
-        <Route path="/onboarding" component={Onboarding} />
       </Switch>
     );
   }

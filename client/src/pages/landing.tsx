@@ -1,10 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Users, DollarSign, Shield, Zap, Target, Star, CheckCircle2 } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function Landing() {
+  const [, setLocation] = useLocation();
+
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    setLocation("/login");
+  };
+
+  const handleRegister = () => {
+    setLocation("/register");
   };
 
   return (
@@ -37,11 +44,11 @@ export default function Landing() {
                 The ultimate marketplace connecting creators with top brands. Discover exclusive affiliate opportunities, earn real commissions, and grow your creator business.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" onClick={handleLogin} data-testid="button-get-started" className="text-base">
-                  Browse Offers
+                <Button size="lg" onClick={handleRegister} data-testid="button-get-started" className="text-base">
+                  Get Started
                 </Button>
                 <Button size="lg" variant="outline" onClick={handleLogin} data-testid="button-list-brand" className="text-base">
-                  List Your Brand
+                  Sign In
                 </Button>
               </div>
               
