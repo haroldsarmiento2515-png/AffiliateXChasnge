@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, FileText, TrendingUp, DollarSign, Plus } from "lucide-react";
+import { Users, FileText, TrendingUp, DollarSign, Plus, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatDistanceToNow } from "date-fns";
 
 export default function CompanyDashboard() {
   const { toast } = useToast();
@@ -29,6 +31,40 @@ export default function CompanyDashboard() {
     queryKey: ["/api/company/stats"],
     enabled: isAuthenticated,
   });
+
+  const { data: applications = [], isLoading: loadingApplications } = useQuery<any[]>({
+    queryKey: ["/api/company/applications"],
+    enabled: isAuthenticated,
+  });
+
+  const completeApplicationMutation = useMutation({
+    mutationFn: async (applicationId: string) => {
+      return await apiRequest(`/api/applications/${applicationId}/complete`, {
+        method: 'POST',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/company/applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/stats"] });
+      toast({
+        title: "Work Approved",
+        description: "Creator work has been marked as complete.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to mark work as complete",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleMarkComplete = (applicationId: string, creatorName: string) => {
+    if (confirm(`Mark work as complete for ${creatorName}? This action cannot be undone.`)) {
+      completeApplicationMutation.mutate(applicationId);
+    }
+  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">
@@ -121,14 +157,59 @@ export default function CompanyDashboard() {
 
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="border-card-border">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
             <CardTitle>Recent Applications</CardTitle>
+            <Badge variant="secondary" data-testid="badge-applications-count">{applications.length}</Badge>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <FileText className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No recent applications</p>
-            </div>
+            {loadingApplications ? (
+              <div className="text-center py-8">
+                <div className="animate-pulse text-sm text-muted-foreground">Loading applications...</div>
+              </div>
+            ) : applications.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No applications yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {applications.slice(0, 5).map((app: any) => (
+                  <div key={app.id} className="flex items-start justify-between gap-4 p-3 rounded-md border border-border hover-elevate" data-testid={`application-${app.id}`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h4 className="font-medium text-sm truncate" data-testid={`text-creator-${app.id}`}>{app.creatorName}</h4>
+                        <Badge 
+                          variant={
+                            app.status === 'completed' ? 'default' : 
+                            app.status === 'approved' || app.status === 'active' ? 'secondary' : 
+                            'outline'
+                          }
+                          data-testid={`badge-status-${app.id}`}
+                        >
+                          {app.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate" data-testid={`text-offer-${app.id}`}>{app.offerTitle}</p>
+                      <p className="text-xs text-tertiary-foreground mt-1">
+                        {formatDistanceToNow(new Date(app.createdAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                    {(app.status === 'approved' || app.status === 'active') && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleMarkComplete(app.id, app.creatorName)}
+                        disabled={completeApplicationMutation.isPending}
+                        className="gap-1"
+                        data-testid={`button-complete-${app.id}`}
+                      >
+                        <CheckCircle className="h-3 w-3" />
+                        Complete
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

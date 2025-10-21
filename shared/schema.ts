@@ -197,6 +197,7 @@ export const applications = pgTable("applications", {
   trackingLink: varchar("tracking_link"),
   trackingCode: varchar("tracking_code"),
   approvedAt: timestamp("approved_at"),
+  completedAt: timestamp("completed_at"),
   autoApprovalScheduledAt: timestamp("auto_approval_scheduled_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

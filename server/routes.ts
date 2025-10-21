@@ -246,6 +246,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/applications/:id/complete", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const application = await storage.getApplication(req.params.id);
+      if (!application) {
+        return res.status(404).send("Application not found");
+      }
+
+      // Verify the application belongs to one of the company's offers
+      const offer = await storage.getOffer(application.offerId);
+      if (!offer) {
+        return res.status(404).send("Offer not found");
+      }
+
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) {
+        return res.status(404).send("Company profile not found");
+      }
+
+      // Compare offer.companyId against companyProfile.id (not userId)
+      if (offer.companyId !== companyProfile.id) {
+        return res.status(403).send("Unauthorized");
+      }
+
+      // Verify application is approved before marking complete
+      if (application.status !== 'approved' && application.status !== 'active') {
+        return res.status(400).send("Only approved applications can be marked as complete");
+      }
+
+      const completed = await storage.completeApplication(application.id);
+      res.json(completed);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/company/applications", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) {
+        return res.status(404).send("Company profile not found");
+      }
+      
+      // Pass company profile ID, not user ID
+      const applications = await storage.getApplicationsByCompany(companyProfile.id);
+      res.json(applications);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
   // Favorites routes
   app.get("/api/favorites", requireAuth, requireRole('creator'), async (req, res) => {
     try {

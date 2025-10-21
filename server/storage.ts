@@ -86,6 +86,8 @@ export interface IStorage {
   createApplication(application: InsertApplication): Promise<Application>;
   updateApplication(id: string, updates: Partial<InsertApplication>): Promise<Application | undefined>;
   approveApplication(id: string, trackingLink: string, trackingCode: string): Promise<Application | undefined>;
+  completeApplication(id: string): Promise<Application | undefined>;
+  getApplicationsByCompany(companyId: string): Promise<any[]>;
 
   // Messages & Conversations
   getConversation(id: string): Promise<any>;
@@ -341,6 +343,46 @@ export class DatabaseStorage implements IStorage {
       .where(eq(applications.id, id))
       .returning();
     return result[0];
+  }
+
+  async completeApplication(id: string): Promise<Application | undefined> {
+    const result = await db
+      .update(applications)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(applications.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getApplicationsByCompany(companyId: string): Promise<any[]> {
+    const result = await db
+      .select({
+        id: applications.id,
+        offerId: applications.offerId,
+        offerTitle: offers.title,
+        creatorId: applications.creatorId,
+        creatorName: users.name,
+        creatorEmail: users.email,
+        message: applications.message,
+        status: applications.status,
+        trackingLink: applications.trackingLink,
+        trackingCode: applications.trackingCode,
+        approvedAt: applications.approvedAt,
+        completedAt: applications.completedAt,
+        createdAt: applications.createdAt,
+        updatedAt: applications.updatedAt,
+      })
+      .from(applications)
+      .innerJoin(offers, eq(applications.offerId, offers.id))
+      .innerJoin(users, eq(applications.creatorId, users.id))
+      .where(eq(offers.companyId, companyId))
+      .orderBy(desc(applications.createdAt));
+    
+    return result;
   }
 
   // Messages & Conversations
