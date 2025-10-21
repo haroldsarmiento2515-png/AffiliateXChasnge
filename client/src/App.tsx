@@ -18,6 +18,10 @@ import Favorites from "@/pages/favorites";
 import Settings from "@/pages/settings";
 import PaymentSettings from "@/pages/payment-settings";
 import CompanyDashboard from "@/pages/company-dashboard";
+import CompanyOffers from "@/pages/company-offers";
+import CompanyApplications from "@/pages/company-applications";
+import CompanyCreators from "@/pages/company-creators";
+import CompanyReviews from "@/pages/company-reviews";
 import AdminDashboard from "@/pages/admin-dashboard";
 import Onboarding from "@/pages/onboarding";
 import Login from "@/pages/login";
@@ -73,12 +77,12 @@ function Router() {
                   <>
                     <Route path="/" component={CompanyDashboard} />
                     <Route path="/company" component={CompanyDashboard} />
-                    <Route path="/company/offers" component={CompanyDashboard} />
-                    <Route path="/company/applications" component={CompanyDashboard} />
-                    <Route path="/company/creators" component={CompanyDashboard} />
+                    <Route path="/company/offers" component={CompanyOffers} />
+                    <Route path="/company/applications" component={CompanyApplications} />
+                    <Route path="/company/creators" component={CompanyCreators} />
                     <Route path="/company/analytics" component={Analytics} />
                     <Route path="/company/messages" component={Messages} />
-                    <Route path="/company/reviews" component={CompanyDashboard} />
+                    <Route path="/company/reviews" component={CompanyReviews} />
                   </>
                 )}
 
