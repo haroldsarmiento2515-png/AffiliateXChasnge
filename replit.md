@@ -31,7 +31,7 @@ Preferred communication style: Simple, everyday language.
 
 **API Design**: RESTful API endpoints with role-based middleware protection. Authentication required for most routes with specific role checks (creator, company, admin) where needed.
 
-**Authentication**: Replit Auth (OpenID Connect) using Passport.js strategy with session-based authentication. Sessions stored in PostgreSQL with express-session and connect-pg-simple.
+**Authentication**: Custom username/password authentication using Passport Local Strategy with bcrypt password hashing. Sessions stored in PostgreSQL with express-session and connect-pg-simple. Users register with username, email, and password.
 
 **Real-time Communication**: WebSocket server integrated with HTTP server for real-time messaging between creators and companies.
 
@@ -67,8 +67,9 @@ Preferred communication style: Simple, everyday language.
 ### External Dependencies
 
 **Authentication & Sessions**:
-- Replit Auth (OpenID Connect) - Primary authentication provider
-- Session management via PostgreSQL
+- Passport Local Strategy - Username/password authentication
+- bcrypt - Password hashing (10 salt rounds)
+- Session management via PostgreSQL with 7-day cookie TTL
 
 **Database**:
 - Neon (PostgreSQL serverless) - Primary data storage
@@ -101,7 +102,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### Click Tracking System (Latest)
+### Custom Authentication System (Latest - October 2025)
+- **Replaced Replit Auth**: Migrated from OpenID Connect to custom username/password authentication
+- **User Schema Updates**: Added `username` (unique, required) and `password` (bcrypt hashed, required) fields to users table
+- **Login/Registration Pages**: Created dedicated `/login` and `/register` pages with form validation
+- **Passport Local Strategy**: Implemented secure credential verification with bcrypt.compare
+- **Session-based Auth**: HttpOnly cookies with PostgreSQL session store for security
+- **Auto-login on Registration**: Users automatically logged in after successful account creation
+- **Role Selection**: Users select Creator or Company role during registration
+- **Landing Page Updates**: "Get Started" button redirects to registration, "Sign In" to login
+
+### Click Tracking System
 - **Individual Click Storage**: Each click creates a `click_events` record with full metadata
 - **IP Normalization**: Properly extracts client IP from X-Forwarded-For header (handles proxy chains)
 - **Geo-location**: Real-time country/city lookup using geoip-lite (MaxMind GeoLite2)
