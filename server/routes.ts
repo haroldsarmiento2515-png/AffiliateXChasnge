@@ -306,8 +306,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics", requireAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
+      const dateRange = (req.query.range as string) || '30d';
       const analyticsData = await storage.getAnalyticsByCreator(userId);
       const applications = await storage.getApplicationsByCreator(userId);
+      const chartData = await storage.getAnalyticsTimeSeriesByCreator(userId, dateRange);
 
       const stats = {
         totalEarnings: analyticsData?.totalEarnings || 0,
@@ -318,6 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversionRate: analyticsData?.totalClicks > 0 
           ? ((analyticsData?.conversions || 0) / analyticsData.totalClicks * 100).toFixed(1)
           : 0,
+        chartData: chartData,
       };
 
       res.json(stats);

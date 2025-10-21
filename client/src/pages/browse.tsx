@@ -64,6 +64,18 @@ export default function Browse() {
 
   const { data: offers, isLoading: offersLoading } = useQuery<any[]>({
     queryKey: ["/api/offers", { search: searchTerm, niches: selectedNiches, commissionType, sortBy }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (selectedNiches.length > 0) params.append('niches', selectedNiches.join(','));
+      if (commissionType) params.append('commissionType', commissionType);
+      if (sortBy) params.append('sortBy', sortBy);
+      
+      const url = `/api/offers${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch offers');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 

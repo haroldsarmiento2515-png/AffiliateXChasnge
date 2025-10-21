@@ -103,6 +103,7 @@ export interface IStorage {
 
   // Analytics
   getAnalyticsByCreator(creatorId: string): Promise<any>;
+  getAnalyticsTimeSeriesByCreator(creatorId: string, dateRange: string): Promise<any[]>;
   getAnalyticsByApplication(applicationId: string): Promise<any[]>;
 
   // Payment Settings
@@ -433,6 +434,37 @@ export class DatabaseStorage implements IStorage {
       .where(eq(analytics.creatorId, creatorId));
     
     return result[0];
+  }
+
+  async getAnalyticsTimeSeriesByCreator(creatorId: string, dateRange: string): Promise<any[]> {
+    // Calculate date filter based on range
+    let whereClause: any = eq(analytics.creatorId, creatorId);
+
+    if (dateRange !== 'all') {
+      let daysBack = 30;
+      if (dateRange === '7d') daysBack = 7;
+      else if (dateRange === '30d') daysBack = 30;
+      else if (dateRange === '90d') daysBack = 90;
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+      whereClause = and(
+        eq(analytics.creatorId, creatorId),
+        sql`${analytics.date} >= ${startDate}`
+      );
+    }
+
+    const result = await db
+      .select({
+        date: sql<string>`TO_CHAR(${analytics.date}, 'Mon DD')`,
+        clicks: sql<number>`COALESCE(SUM(${analytics.clicks}), 0)`,
+      })
+      .from(analytics)
+      .where(whereClause)
+      .groupBy(analytics.date)
+      .orderBy(analytics.date);
+
+    return result;
   }
 
   async getAnalyticsByApplication(applicationId: string): Promise<any[]> {

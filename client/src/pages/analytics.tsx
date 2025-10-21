@@ -41,18 +41,16 @@ export default function Analytics() {
 
   const { data: analytics } = useQuery<any>({
     queryKey: ["/api/analytics", { range: dateRange }],
+    queryFn: async () => {
+      const url = `/api/analytics?range=${dateRange}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch analytics');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
-  const mockChartData = [
-    { date: 'Jan 1', clicks: 45 },
-    { date: 'Jan 2', clicks: 52 },
-    { date: 'Jan 3', clicks: 61 },
-    { date: 'Jan 4', clicks: 58 },
-    { date: 'Jan 5', clicks: 70 },
-    { date: 'Jan 6', clicks: 65 },
-    { date: 'Jan 7', clicks: 80 },
-  ];
+  const chartData = analytics?.chartData || [];
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">
@@ -149,23 +147,31 @@ export default function Analytics() {
           <CardTitle>Clicks Over Time</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockChartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="date" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="clicks"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ fill: "hsl(var(--primary))", r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {chartData.length > 0 ? (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="date" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="clicks"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <MousePointerClick className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">No tracking data yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Your click data will appear here once you start promoting offers</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
