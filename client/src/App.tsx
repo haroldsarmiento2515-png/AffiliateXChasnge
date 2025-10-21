@@ -19,6 +19,7 @@ import Settings from "@/pages/settings";
 import PaymentSettings from "@/pages/payment-settings";
 import CompanyDashboard from "@/pages/company-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
+import Onboarding from "@/pages/onboarding";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -29,6 +30,17 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route component={Landing} />
+      </Switch>
+    );
+  }
+
+  // Show onboarding for brand new users who haven't selected a role yet
+  // We detect this by checking if they need to complete onboarding
+  // Note: After selecting role in onboarding, user will be redirected to appropriate dashboard
+  if (window.location.pathname === '/onboarding') {
+    return (
+      <Switch>
+        <Route path="/onboarding" component={Onboarding} />
       </Switch>
     );
   }

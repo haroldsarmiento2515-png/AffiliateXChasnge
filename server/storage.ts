@@ -662,35 +662,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllPayments(): Promise<any[]> {
-    const result = await db
-      .select({
-        id: payments.id,
-        applicationId: payments.applicationId,
-        creatorId: payments.creatorId,
-        creatorName: sql<string>`COALESCE(creator.first_name || ' ' || creator.last_name, creator.email)`,
-        creatorEmail: sql<string>`creator.email`,
-        companyId: payments.companyId,
-        companyName: sql<string>`company.legal_name`,
-        offerId: payments.offerId,
-        offerTitle: sql<string>`offers.title`,
-        grossAmount: payments.grossAmount,
-        platformFeeAmount: payments.platformFeeAmount,
-        stripeFeeAmount: payments.stripeFeeAmount,
-        netAmount: payments.netAmount,
-        status: payments.status,
-        paymentMethod: payments.paymentMethod,
-        description: payments.description,
-        initiatedAt: payments.initiatedAt,
-        completedAt: payments.completedAt,
-        createdAt: payments.createdAt,
-      })
+    // Simplified query - join details can be added later if needed
+    return await db
+      .select()
       .from(payments)
-      .innerJoin(users.as('creator'), eq(payments.creatorId, sql.raw('creator.id')))
-      .innerJoin(users.as('company'), eq(payments.companyId, sql.raw('company.id')))
-      .innerJoin(offers, eq(payments.offerId, offers.id))
       .orderBy(desc(payments.createdAt));
-    
-    return result;
   }
 
   async updatePaymentStatus(id: string, status: string, updates?: Partial<InsertPayment>): Promise<Payment | undefined> {

@@ -46,6 +46,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user role (for onboarding)
+  app.post("/api/user/role", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { role } = req.body;
+
+      if (!role || !['creator', 'company'].includes(role)) {
+        return res.status(400).json({ error: "Invalid role. Must be 'creator' or 'company'" });
+      }
+
+      const updatedUser = await storage.updateUser(userId, { role });
+      
+      // Update session with new role
+      if (updatedUser && req.user) {
+        (req.user as any).role = updatedUser.role;
+      }
+
+      res.json({ success: true, role });
+    } catch (error: any) {
+      console.error("Error updating role:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Profile routes
   app.get("/api/profile", requireAuth, async (req, res) => {
     try {
@@ -376,7 +400,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const forwardedFor = req.headers['x-forwarded-for'];
       if (forwardedFor) {
         // X-Forwarded-For can be comma-separated, take first (client) IP
-        const ips = String(forwardedFor).split(',').map(ip => ip.trim());
+        const forwardedIpValue = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+        const ips = String(forwardedIpValue).split(',').map(ip => ip.trim());
         clientIp = ips[0];
       } else if (req.socket.remoteAddress) {
         clientIp = req.socket.remoteAddress;
