@@ -15,6 +15,8 @@ import {
   insertReviewSchema,
   insertFavoriteSchema,
   insertPaymentSettingSchema,
+  adminReviewUpdateSchema,
+  adminNoteSchema,
 } from "@shared/schema";
 
 // Alias for convenience
@@ -666,6 +668,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const offer = await storage.approveOffer(req.params.id);
       res.json(offer);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Admin review routes
+  app.get("/api/admin/reviews", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const reviews = await storage.getAllReviews();
+      res.json(reviews);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.patch("/api/admin/reviews/:id", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const validated = adminReviewUpdateSchema.parse(req.body);
+      const review = await storage.updateReview(req.params.id, validated);
+      res.json(review);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.post("/api/admin/reviews/:id/hide", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const review = await storage.hideReview(req.params.id);
+      res.json(review);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.delete("/api/admin/reviews/:id", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      await storage.deleteReview(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.post("/api/admin/reviews/:id/note", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const validated = adminNoteSchema.parse(req.body);
+      const review = await storage.updateAdminNote(req.params.id, validated.note, userId);
+      res.json(review);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.post("/api/admin/reviews/:id/approve", requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const review = await storage.approveReview(req.params.id, userId);
+      res.json(review);
     } catch (error: any) {
       res.status(500).send(error.message);
     }

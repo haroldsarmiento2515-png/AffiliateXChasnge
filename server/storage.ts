@@ -461,7 +461,53 @@ export class DatabaseStorage implements IStorage {
   async updateReview(id: string, updates: Partial<InsertReview>): Promise<Review | undefined> {
     const result = await db
       .update(reviews)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, isEdited: true, updatedAt: new Date() })
+      .where(eq(reviews.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getAllReviews(): Promise<Review[]> {
+    return await db.select().from(reviews).orderBy(desc(reviews.createdAt));
+  }
+
+  async hideReview(id: string): Promise<Review | undefined> {
+    const result = await db
+      .update(reviews)
+      .set({ isHidden: true, updatedAt: new Date() })
+      .where(eq(reviews.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteReview(id: string): Promise<void> {
+    await db.delete(reviews).where(eq(reviews.id, id));
+  }
+
+  async updateAdminNote(id: string, note: string, adminId: string): Promise<Review | undefined> {
+    const result = await db
+      .update(reviews)
+      .set({ 
+        adminNote: note, 
+        adminNoteUpdatedBy: adminId,
+        adminNoteUpdatedAt: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(eq(reviews.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async approveReview(id: string, adminId: string): Promise<Review | undefined> {
+    const result = await db
+      .update(reviews)
+      .set({ 
+        isApproved: true, 
+        isHidden: false,
+        approvedBy: adminId, 
+        approvedAt: new Date(),
+        updatedAt: new Date() 
+      })
       .where(eq(reviews.id, id))
       .returning();
     return result[0];

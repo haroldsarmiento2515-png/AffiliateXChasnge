@@ -91,6 +91,38 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
+      {/* Quick Access Section */}
+      <Card className="border-card-border">
+        <CardHeader>
+          <CardTitle>Quick Access</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Link href="/admin/reviews">
+              <Button variant="outline" className="w-full h-auto py-6 flex flex-col gap-2" data-testid="button-manage-reviews">
+                <AlertCircle className="h-6 w-6" />
+                <span>Manage Reviews</span>
+                <span className="text-xs text-muted-foreground">View, edit, approve reviews</span>
+              </Button>
+            </Link>
+            <Link href="/admin/companies">
+              <Button variant="outline" className="w-full h-auto py-6 flex flex-col gap-2" data-testid="button-manage-companies">
+                <Building2 className="h-6 w-6" />
+                <span>Manage Companies</span>
+                <span className="text-xs text-muted-foreground">Approve or reject companies</span>
+              </Button>
+            </Link>
+            <Link href="/admin/offers">
+              <Button variant="outline" className="w-full h-auto py-6 flex flex-col gap-2" data-testid="button-manage-offers">
+                <TrendingUp className="h-6 w-6" />
+                <span>Manage Offers</span>
+                <span className="text-xs text-muted-foreground">Review and approve offers</span>
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid md:grid-cols-2 gap-6">
         <Card className="border-card-border">
           <CardHeader className="flex flex-row items-center justify-between">

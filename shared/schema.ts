@@ -288,6 +288,13 @@ export const reviews = pgTable("reviews", {
   reviewText: text("review_text"),
   companyResponse: text("company_response"),
   companyRespondedAt: timestamp("company_responded_at"),
+  adminNote: text("admin_note"),
+  adminNoteUpdatedBy: varchar("admin_note_updated_by").references(() => users.id, { onDelete: 'set null' }),
+  adminNoteUpdatedAt: timestamp("admin_note_updated_at"),
+  isApproved: boolean("is_approved").default(true),
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  isHidden: boolean("is_hidden").default(false),
   isEdited: boolean("is_edited").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -468,6 +475,25 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   }),
 }));
 
+// System Settings (admin-configurable platform settings)
+export const systemSettings = pgTable("system_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: varchar("key").notNull().unique(),
+  value: jsonb("value").notNull(),
+  description: text("description"),
+  category: varchar("category").notNull(), // 'fees', 'automation', 'content', 'payment', 'general'
+  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: 'set null' }),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const systemSettingsRelations = relations(systemSettings, ({ one }) => ({
+  updater: one(users, {
+    fields: [systemSettings.updatedBy],
+    references: [users.id],
+  }),
+}));
+
 // Type exports for Replit Auth
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -480,10 +506,13 @@ export const insertOfferSchema = createInsertSchema(offers).omit({ id: true, cre
 export const insertOfferVideoSchema = createInsertSchema(offerVideos).omit({ id: true, createdAt: true });
 export const insertApplicationSchema = createInsertSchema(applications).omit({ id: true, createdAt: true, updatedAt: true, approvedAt: true, trackingLink: true, trackingCode: true, autoApprovalScheduledAt: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
-export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, updatedAt: true, companyResponse: true, companyRespondedAt: true, isEdited: true });
+export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, updatedAt: true, companyResponse: true, companyRespondedAt: true, isEdited: true, adminNote: true, isApproved: true, approvedBy: true, approvedAt: true, isHidden: true });
+export const adminReviewUpdateSchema = createInsertSchema(reviews).pick({ reviewText: true, overallRating: true, paymentSpeedRating: true, communicationRating: true, offerQualityRating: true, supportRating: true }).partial();
+export const adminNoteSchema = z.object({ note: z.string() });
 export const insertFavoriteSchema = createInsertSchema(favorites).omit({ id: true, createdAt: true });
 export const insertPaymentSettingSchema = createInsertSchema(paymentSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true, initiatedAt: true, completedAt: true, failedAt: true, refundedAt: true });
+export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -509,3 +538,5 @@ export type PaymentSetting = typeof paymentSettings.$inferSelect;
 export type InsertPaymentSetting = z.infer<typeof insertPaymentSettingSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
