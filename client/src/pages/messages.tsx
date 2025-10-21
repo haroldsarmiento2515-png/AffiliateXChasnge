@@ -86,13 +86,6 @@ export default function Messages() {
     }
   }, [isAuthenticated]);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-
   const { data: conversations } = useQuery<any[]>({
     queryKey: ["/api/conversations"],
     enabled: isAuthenticated,
@@ -102,6 +95,13 @@ export default function Messages() {
     queryKey: ["/api/messages", selectedConversation],
     enabled: !!selectedConversation && isAuthenticated,
   });
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   const sendMessage = () => {
     if (!selectedConversation || !messageText.trim() || !user?.id) return;

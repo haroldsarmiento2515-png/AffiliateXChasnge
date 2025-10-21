@@ -128,6 +128,31 @@ export async function setupAuth(app: Express) {
         role,
       });
 
+      // Create profile based on role
+      if (role === 'creator') {
+        await storage.createCreatorProfile({
+          userId: user.id,
+          bio: null,
+          youtubeUrl: null,
+          tiktokUrl: null,
+          instagramUrl: null,
+          youtubeFollowers: null,
+          tiktokFollowers: null,
+          instagramFollowers: null,
+          niches: [],
+        });
+      } else if (role === 'company') {
+        await storage.createCompanyProfile({
+          userId: user.id,
+          legalName: username,
+          website: null,
+          description: null,
+          logoUrl: null,
+          industry: null,
+          status: 'pending',
+        });
+      }
+
       // Log the user in
       req.login(user, (err) => {
         if (err) {

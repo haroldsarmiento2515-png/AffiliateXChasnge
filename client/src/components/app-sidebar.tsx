@@ -230,11 +230,23 @@ export function AppSidebar() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <a href="/api/logout">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log Out</span>
-              </a>
+            <DropdownMenuItem 
+              onClick={async () => {
+                try {
+                  await fetch('/api/auth/logout', { 
+                    method: 'POST',
+                    credentials: 'include'
+                  });
+                  window.location.href = '/';
+                } catch (error) {
+                  console.error('Logout error:', error);
+                  window.location.href = '/';
+                }
+              }}
+              data-testid="button-logout"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log Out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
