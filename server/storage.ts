@@ -1,5 +1,6 @@
 import { eq, and, desc, sql, count } from "drizzle-orm";
 import { db } from "./db";
+import * as geoip from "geoip-lite";
 import {
   users,
   creatorProfiles,
@@ -12,6 +13,7 @@ import {
   reviews,
   favorites,
   analytics,
+  clickEvents,
   paymentSettings,
   type User,
   type UpsertUser,
@@ -32,6 +34,8 @@ import {
   type InsertReview,
   type Favorite,
   type InsertFavorite,
+  type ClickEvent,
+  type InsertClickEvent,
   type PaymentSetting,
   type InsertPaymentSetting,
 } from "@shared/schema";
@@ -75,6 +79,7 @@ export interface IStorage {
 
   // Applications
   getApplication(id: string): Promise<Application | undefined>;
+  getApplicationByTrackingCode(trackingCode: string): Promise<Application | undefined>;
   getApplicationsByCreator(creatorId: string): Promise<Application[]>;
   getApplicationsByOffer(offerId: string): Promise<Application[]>;
   getAllPendingApplications(): Promise<Application[]>;
@@ -105,6 +110,7 @@ export interface IStorage {
   getAnalyticsByCreator(creatorId: string): Promise<any>;
   getAnalyticsTimeSeriesByCreator(creatorId: string, dateRange: string): Promise<any[]>;
   getAnalyticsByApplication(applicationId: string): Promise<any[]>;
+  logTrackingClick(applicationId: string, clickData: { ip: string; userAgent: string; referer: string; timestamp: Date }): Promise<void>;
 
   // Payment Settings
   getPaymentSettings(userId: string): Promise<PaymentSetting[]>;
@@ -282,6 +288,11 @@ export class DatabaseStorage implements IStorage {
   // Applications
   async getApplication(id: string): Promise<Application | undefined> {
     const result = await db.select().from(applications).where(eq(applications.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getApplicationByTrackingCode(trackingCode: string): Promise<Application | undefined> {
+    const result = await db.select().from(applications).where(eq(applications.trackingCode, trackingCode)).limit(1);
     return result[0];
   }
 
@@ -469,6 +480,91 @@ export class DatabaseStorage implements IStorage {
 
   async getAnalyticsByApplication(applicationId: string): Promise<any[]> {
     return await db.select().from(analytics).where(eq(analytics.applicationId, applicationId)).orderBy(desc(analytics.date));
+  }
+
+  async logTrackingClick(applicationId: string, clickData: { ip: string; userAgent: string; referer: string; timestamp: Date }): Promise<void> {
+    // Get application to find offerId and creatorId
+    const application = await this.getApplication(applicationId);
+    if (!application) {
+      console.error('[Tracking] Application not found:', applicationId);
+      return;
+    }
+
+    // Parse user agent for device type and browser (basic detection)
+    const deviceType = clickData.userAgent.toLowerCase().includes('mobile') ? 'mobile' : 
+                       clickData.userAgent.toLowerCase().includes('tablet') ? 'tablet' : 'desktop';
+    const browser = clickData.userAgent.includes('Chrome') ? 'Chrome' :
+                    clickData.userAgent.includes('Firefox') ? 'Firefox' :
+                    clickData.userAgent.includes('Safari') ? 'Safari' : 'Other';
+
+    // Geo-IP lookup
+    const geo = geoip.lookup(clickData.ip);
+    const country = geo?.country || 'Unknown';
+    const city = geo?.city || 'Unknown';
+
+    // Store individual click event with full metadata
+    await db.insert(clickEvents).values({
+      applicationId,
+      offerId: application.offerId,
+      creatorId: application.creatorId,
+      ipAddress: clickData.ip,
+      userAgent: clickData.userAgent,
+      referer: clickData.referer,
+      country,
+      city,
+      deviceType,
+      browser,
+      clickedAt: clickData.timestamp,
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Count unique IPs for today
+    const uniqueIpsToday = await db
+      .selectDistinct({ ipAddress: clickEvents.ipAddress })
+      .from(clickEvents)
+      .where(and(
+        eq(clickEvents.applicationId, applicationId),
+        sql`${clickEvents.clickedAt}::date = ${today}::date`
+      ));
+
+    // Check if analytics record exists for today
+    const existing = await db
+      .select()
+      .from(analytics)
+      .where(and(
+        eq(analytics.applicationId, applicationId),
+        eq(analytics.date, today)
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      // Update existing record - increment clicks and update unique count
+      await db
+        .update(analytics)
+        .set({
+          clicks: sql`${analytics.clicks} + 1`,
+          uniqueClicks: uniqueIpsToday.length,
+          updatedAt: new Date(),
+        })
+        .where(eq(analytics.id, existing[0].id));
+    } else {
+      // Create new record
+      await db.insert(analytics).values({
+        applicationId,
+        offerId: application.offerId,
+        creatorId: application.creatorId,
+        clicks: 1,
+        uniqueClicks: uniqueIpsToday.length,
+        conversions: 0,
+        earnings: '0',
+        earningsPaid: '0',
+        date: today,
+      });
+    }
+
+    console.log(`[Tracking] Logged click for application ${applicationId} from ${city}, ${country} - IP: ${clickData.ip} (${deviceType}, ${browser})`);
   }
 
   // Payment Settings

@@ -302,6 +302,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Tracking & Redirect System
+  app.get("/track/:code", async (req, res) => {
+    try {
+      const trackingCode = req.params.code;
+      
+      // Look up application by tracking code
+      const application = await storage.getApplicationByTrackingCode(trackingCode);
+      if (!application) {
+        return res.status(404).send("Tracking link not found");
+      }
+
+      // Get offer details for product URL
+      const offer = await storage.getOffer(application.offerId);
+      if (!offer) {
+        return res.status(404).send("Offer not found");
+      }
+
+      // Extract client IP (normalize for proxies/load balancers)
+      let clientIp = 'unknown';
+      const forwardedFor = req.headers['x-forwarded-for'];
+      if (forwardedFor) {
+        // X-Forwarded-For can be comma-separated, take first (client) IP
+        const ips = String(forwardedFor).split(',').map(ip => ip.trim());
+        clientIp = ips[0];
+      } else if (req.socket.remoteAddress) {
+        clientIp = req.socket.remoteAddress;
+      } else if (req.ip) {
+        clientIp = req.ip;
+      }
+      
+      // Clean IPv6-mapped IPv4 addresses (::ffff:192.168.1.1 → 192.168.1.1)
+      if (clientIp.startsWith('::ffff:')) {
+        clientIp = clientIp.substring(7);
+      }
+
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      const referer = req.headers['referer'] || req.headers['referrer'] || 'direct';
+      
+      // Log the click asynchronously (don't block redirect)
+      storage.logTrackingClick(application.id, {
+        ip: clientIp,
+        userAgent,
+        referer,
+        timestamp: new Date(),
+      }).catch(err => console.error('[Tracking] Error logging click:', err));
+
+      // Redirect to product URL
+      res.redirect(302, offer.productUrl);
+    } catch (error: any) {
+      console.error('[Tracking] Error:', error);
+      res.status(500).send("Internal server error");
+    }
+  });
+
   // Analytics routes
   app.get("/api/analytics", requireAuth, async (req, res) => {
     try {

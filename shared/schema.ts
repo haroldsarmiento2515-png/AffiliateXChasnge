@@ -323,7 +323,42 @@ export const favoritesRelations = relations(favorites, ({ one }) => ({
   }),
 }));
 
-// Analytics
+// Click Events (individual click tracking)
+export const clickEvents = pgTable("click_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").notNull().references(() => applications.id, { onDelete: 'cascade' }),
+  offerId: varchar("offer_id").notNull().references(() => offers.id, { onDelete: 'cascade' }),
+  creatorId: varchar("creator_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  ipAddress: varchar("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  referer: text("referer"),
+  country: varchar("country"),
+  city: varchar("city"),
+  deviceType: varchar("device_type"),
+  browser: varchar("browser"),
+  clickedAt: timestamp("clicked_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const clickEventsRelations = relations(clickEvents, ({ one }) => ({
+  application: one(applications, {
+    fields: [clickEvents.applicationId],
+    references: [applications.id],
+  }),
+  offer: one(offers, {
+    fields: [clickEvents.offerId],
+    references: [offers.id],
+  }),
+  creator: one(users, {
+    fields: [clickEvents.creatorId],
+    references: [users.id],
+  }),
+}));
+
+export type ClickEvent = typeof clickEvents.$inferSelect;
+export type InsertClickEvent = typeof clickEvents.$inferInsert;
+
+// Analytics (aggregated daily stats)
 export const analytics = pgTable("analytics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: varchar("application_id").notNull().references(() => applications.id, { onDelete: 'cascade' }),

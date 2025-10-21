@@ -53,7 +53,8 @@ Preferred communication style: Simple, everyday language.
 - Messaging system with conversations and real-time updates
 - Reviews and ratings for offers
 - Favorites/bookmarks for creators
-- Analytics tracking for clicks, conversions, and earnings
+- Click events with comprehensive metadata (IP, geo-location, device, browser)
+- Analytics tracking for clicks, conversions, and earnings (aggregated from click events)
 - Payment settings for payout methods
 
 **Key Relationships**:
@@ -91,6 +92,20 @@ Preferred communication style: Simple, everyday language.
 **WebSocket**:
 - ws library - Real-time bidirectional communication for messaging
 
+**Geo-location**:
+- geoip-lite - IP-to-location lookup (MaxMind GeoLite2 database)
+
 **Design Assets**:
 - Google Fonts (Inter, JetBrains Mono) - Typography
 - Lucide React - Icon system
+
+## Recent Changes
+
+### Click Tracking System (Latest)
+- **Individual Click Storage**: Each click creates a `click_events` record with full metadata
+- **IP Normalization**: Properly extracts client IP from X-Forwarded-For header (handles proxy chains)
+- **Geo-location**: Real-time country/city lookup using geoip-lite (MaxMind GeoLite2)
+- **Device Detection**: Parses user agent to identify device type (mobile/tablet/desktop) and browser
+- **Unique Click Calculation**: Counts distinct normalized IP addresses per day for accurate analytics
+- **Tracking Endpoint**: `/track/:code` → logs metadata → redirects to product URL
+- **Metadata Captured**: IP address, country, city, user agent, device type, browser, referer, timestamp
