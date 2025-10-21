@@ -1,6 +1,8 @@
 import type { Express, Request } from "express";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 
@@ -12,8 +14,36 @@ export function isAuthenticated(req: Request, res: any, next: any) {
   res.status(401).send("Unauthorized");
 }
 
+// Setup session middleware
+function getSession() {
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000;
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
+  return session({
+    secret: process.env.SESSION_SECRET!,
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: sessionTtl,
+    },
+  });
+}
+
 // Setup Passport Local Strategy
 export async function setupAuth(app: Express) {
+  // Set trust proxy for session cookies
+  app.set("trust proxy", 1);
+
+  // Setup session middleware BEFORE passport
+  app.use(getSession());
   // Configure Passport Local Strategy
   passport.use(
     new LocalStrategy(async (username, password, done) => {
