@@ -34,9 +34,7 @@ export default function CompanyApplications() {
 
   const completeApplicationMutation = useMutation({
     mutationFn: async (applicationId: string) => {
-      return await apiRequest(`/api/applications/${applicationId}/complete`, {
-        method: 'POST',
-      });
+      return await apiRequest<any>(`/api/applications/${applicationId}/complete`, 'POST');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company/applications"] });
