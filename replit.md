@@ -102,7 +102,32 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### Custom Authentication System (Latest - October 2025)
+### Enhanced Real-Time Messaging System (Latest - October 2025)
+
+**UI/UX Improvements:**
+- **Typing Indicators**: Real-time typing status with 3-second timeout and animated bubble display
+- **Read Receipts**: Double-check marks show when messages are read, single check for sent
+- **Connection Status**: Live online/offline/reconnecting badge with auto-reconnect on disconnect
+- **Message Grouping**: Consecutive messages from same sender within 1 minute are grouped for cleaner UI
+- **Date Separators**: Smart date labels (Today, Yesterday, full dates) separate message sections
+- **Sound Notifications**: Optional notification sound for new messages with toggle in UI (persisted to localStorage)
+- **Better Timestamps**: Contextual time display (h:mm a for today, "Yesterday h:mm a", full date for older)
+- **Start Conversation**: Companies can initiate conversations with creators directly from applications page
+- **Auto-Read Tracking**: Messages automatically marked as read when viewing conversation
+- **Improved Empty States**: Helpful messages guide users when no conversations exist
+- **URL Deep Linking**: Direct conversation access via `/messages?conversation={id}` query parameter
+- **Message Creator Button**: Added to company applications page for quick communication
+
+**WebSocket Architecture (Production-Ready):**
+- **Persistent Single Connection**: WebSocket effect depends ONLY on `isAuthenticated` to prevent unnecessary reconnections on UI state changes (conversation switches, sound toggles)
+- **Ref-Based State Access**: Uses `selectedConversationRef` and `userIdRef` to avoid closure staleness in WebSocket handlers
+- **Robust Reconnection**: Per-effect `shouldReconnect` flag prevents old effect instances from reconnecting; auto-reconnects on unintentional disconnects with 3-second delay
+- **Handshake Failure Handling**: Socket assigned to `wsRef.current` immediately upon creation (not after `onopen`) so error/close handlers can identify and recover from handshake failures
+- **Identity Checks**: All handlers verify `socket === wsRef.current` before mutating state to prevent stale sockets from interfering
+- **Conversation-Aware Typing**: Typing indicators clear on conversation switch; both `user_typing` and `user_stop_typing` events check `conversationId` to ensure conversation-scoped behavior
+- **WebSocket Events**: Extended to handle `new_message`, `typing_start`, `typing_stop`, `mark_read`, and `messages_read` events
+
+### Custom Authentication System (October 2025)
 - **Replaced Replit Auth**: Migrated from OpenID Connect to custom username/password authentication
 - **User Schema Updates**: Added `username` (unique, required) and `password` (bcrypt hashed, required) fields to users table
 - **Login/Registration Pages**: Created dedicated `/login` and `/register` pages with form validation
@@ -112,7 +137,7 @@ Preferred communication style: Simple, everyday language.
 - **Role Selection**: Users select Creator or Company role during registration
 - **Landing Page Updates**: "Get Started" button redirects to registration, "Sign In" to login
 
-### Click Tracking System
+### Click Tracking System (October 2025)
 - **Individual Click Storage**: Each click creates a `click_events` record with full metadata
 - **IP Normalization**: Properly extracts client IP from X-Forwarded-For header (handles proxy chains)
 - **Geo-location**: Real-time country/city lookup using geoip-lite (MaxMind GeoLite2)
@@ -120,3 +145,10 @@ Preferred communication style: Simple, everyday language.
 - **Unique Click Calculation**: Counts distinct normalized IP addresses per day for accurate analytics
 - **Tracking Endpoint**: `/track/:code` → logs metadata → redirects to product URL
 - **Metadata Captured**: IP address, country, city, user agent, device type, browser, referer, timestamp
+
+### Database Export & Migration Utilities (October 2025)
+- **Export Script**: `scripts/export-database.ts` exports all tables to timestamped JSON files
+- **Migration Guide**: `MIGRATION_GUIDE.md` provides step-by-step instructions for database portability
+- **SQL Dump Support**: Instructions for PostgreSQL pg_dump for large datasets
+- **External DB Setup**: Guides for Neon, Supabase, and local PostgreSQL setup
+- **Security Considerations**: Password hashes excluded from JSON export, environment variables documented

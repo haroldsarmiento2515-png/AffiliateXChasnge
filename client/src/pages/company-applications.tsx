@@ -2,17 +2,19 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { FileText, CheckCircle, Clock, XCircle } from "lucide-react";
+import { FileText, CheckCircle, Clock, XCircle, MessageCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 
 export default function CompanyApplications() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -52,10 +54,31 @@ export default function CompanyApplications() {
     },
   });
 
+  const startConversationMutation = useMutation({
+    mutationFn: async (applicationId: string) => {
+      return await apiRequest('/api/conversations/start', 'POST', { applicationId });
+    },
+    onSuccess: (data: any) => {
+      // Redirect to messages with conversation selected
+      setLocation(`/messages?conversation=${data.conversationId}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleMarkComplete = (applicationId: string, creatorName: string) => {
     if (confirm(`Mark work as complete for ${creatorName}? This action cannot be undone.`)) {
       completeApplicationMutation.mutate(applicationId);
     }
+  };
+
+  const handleMessageCreator = (applicationId: string) => {
+    startConversationMutation.mutate(applicationId);
   };
 
   const getStatusIcon = (status: string) => {
@@ -170,18 +193,31 @@ export default function CompanyApplications() {
                   </div>
                 )}
 
-                {app.status === 'approved' && !app.completedAt && (
+                <div className="flex gap-2">
                   <Button
-                    onClick={() => handleMarkComplete(app.id, app.creator?.firstName || 'this creator')}
+                    onClick={() => handleMessageCreator(app.id)}
                     variant="outline"
-                    className="w-full"
-                    disabled={completeApplicationMutation.isPending}
-                    data-testid={`button-mark-complete-${app.id}`}
+                    className="flex-1"
+                    disabled={startConversationMutation.isPending}
+                    data-testid={`button-message-creator-${app.id}`}
                   >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {completeApplicationMutation.isPending ? 'Processing...' : 'Mark Work Complete'}
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    {startConversationMutation.isPending ? 'Opening...' : 'Message Creator'}
                   </Button>
-                )}
+
+                  {app.status === 'approved' && !app.completedAt && (
+                    <Button
+                      onClick={() => handleMarkComplete(app.id, app.creator?.firstName || 'this creator')}
+                      variant="default"
+                      className="flex-1"
+                      disabled={completeApplicationMutation.isPending}
+                      data-testid={`button-mark-complete-${app.id}`}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {completeApplicationMutation.isPending ? 'Processing...' : 'Mark Work Complete'}
+                    </Button>
+                  )}
+                </div>
 
                 {app.completedAt && (
                   <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">

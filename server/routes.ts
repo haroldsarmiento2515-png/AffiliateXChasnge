@@ -379,7 +379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userAgent = req.headers['user-agent'] || 'unknown';
-      const referer = req.headers['referer'] || req.headers['referrer'] || 'direct';
+      const refererRaw = req.headers['referer'] || req.headers['referrer'];
+      const referer = Array.isArray(refererRaw) ? refererRaw[0] : (refererRaw || 'direct');
       
       // Log the click asynchronously (don't block redirect)
       storage.logTrackingClick(application.id, {
@@ -455,6 +456,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const message = await storage.createMessage(validated);
       res.json(message);
     } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Get or create conversation for an application
+  app.post("/api/conversations/start", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { applicationId } = req.body;
+
+      if (!applicationId) {
+        return res.status(400).json({ error: "applicationId is required" });
+      }
+
+      // Get the application
+      const application = await storage.getApplication(applicationId);
+      if (!application) {
+        return res.status(404).json({ error: "Application not found" });
+      }
+
+      // Find existing conversation for this application
+      const existingConversations = await storage.getConversationsByUser(userId);
+      const existingConversation = existingConversations.find(
+        (c: any) => c.applicationId === applicationId
+      );
+
+      if (existingConversation) {
+        return res.json({ conversationId: existingConversation.id });
+      }
+
+      // Get company profile for the current user (if company)
+      const user = req.user as any;
+      let companyId: string | null = null;
+
+      if (user.role === 'company') {
+        const companyProfile = await storage.getCompanyProfile(userId);
+        companyId = companyProfile?.id || null;
+      } else {
+        // If creator, get company from offer
+        const offer = await storage.getOffer(application.offerId);
+        companyId = offer?.companyId || null;
+      }
+
+      if (!companyId) {
+        return res.status(400).json({ error: "Could not determine company" });
+      }
+
+      // Create new conversation
+      const conversation = await storage.createConversation({
+        applicationId,
+        creatorId: application.creatorId,
+        companyId,
+        offerId: application.offerId,
+        lastMessageAt: new Date(),
+      });
+
+      res.json({ conversationId: conversation.id });
+    } catch (error: any) {
+      console.error('Error starting conversation:', error);
       res.status(500).send(error.message);
     }
   });
@@ -739,6 +799,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
               recipientWs.send(JSON.stringify({
                 type: 'new_message',
                 message: savedMessage,
+              }));
+            }
+          }
+        } else if (message.type === 'typing_start') {
+          // Broadcast typing indicator to other participants
+          const conversation = await storage.getConversation(message.conversationId);
+          const recipientIds = [conversation.creatorId, conversation.companyId].filter(id => id !== userId);
+          
+          for (const recipientId of recipientIds) {
+            const recipientWs = clients.get(recipientId);
+            if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
+              recipientWs.send(JSON.stringify({
+                type: 'user_typing',
+                conversationId: message.conversationId,
+                userId: userId,
+              }));
+            }
+          }
+        } else if (message.type === 'typing_stop') {
+          // Broadcast stop typing indicator
+          const conversation = await storage.getConversation(message.conversationId);
+          const recipientIds = [conversation.creatorId, conversation.companyId].filter(id => id !== userId);
+          
+          for (const recipientId of recipientIds) {
+            const recipientWs = clients.get(recipientId);
+            if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
+              recipientWs.send(JSON.stringify({
+                type: 'user_stop_typing',
+                conversationId: message.conversationId,
+                userId: userId,
+              }));
+            }
+          }
+        } else if (message.type === 'mark_read') {
+          // Mark messages as read
+          await storage.markMessagesAsRead(message.conversationId, userId);
+          
+          // Notify the sender that messages have been read
+          const conversation = await storage.getConversation(message.conversationId);
+          const recipientIds = [conversation.creatorId, conversation.companyId].filter(id => id !== userId);
+          
+          for (const recipientId of recipientIds) {
+            const recipientWs = clients.get(recipientId);
+            if (recipientWs && recipientWs.readyState === WebSocket.OPEN) {
+              recipientWs.send(JSON.stringify({
+                type: 'messages_read',
+                conversationId: message.conversationId,
+                readBy: userId,
               }));
             }
           }
