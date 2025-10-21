@@ -15,6 +15,7 @@ import {
   analytics,
   clickEvents,
   paymentSettings,
+  payments,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -38,6 +39,8 @@ import {
   type InsertClickEvent,
   type PaymentSetting,
   type InsertPaymentSetting,
+  type Payment,
+  type InsertPayment,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -118,6 +121,14 @@ export interface IStorage {
   getPaymentSettings(userId: string): Promise<PaymentSetting[]>;
   createPaymentSetting(setting: InsertPaymentSetting): Promise<PaymentSetting>;
   deletePaymentSetting(id: string): Promise<void>;
+
+  // Payments
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  getPayment(id: string): Promise<Payment | undefined>;
+  getPaymentsByCreator(creatorId: string): Promise<Payment[]>;
+  getPaymentsByCompany(companyId: string): Promise<Payment[]>;
+  getAllPayments(): Promise<any[]>;
+  updatePaymentStatus(id: string, status: string, updates?: Partial<InsertPayment>): Promise<Payment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -365,7 +376,7 @@ export class DatabaseStorage implements IStorage {
         offerId: applications.offerId,
         offerTitle: offers.title,
         creatorId: applications.creatorId,
-        creatorName: users.name,
+        creatorName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
         creatorEmail: users.email,
         message: applications.message,
         status: applications.status,
@@ -621,6 +632,78 @@ export class DatabaseStorage implements IStorage {
 
   async deletePaymentSetting(id: string): Promise<void> {
     await db.delete(paymentSettings).where(eq(paymentSettings.id, id));
+  }
+
+  // Payments
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const result = await db.insert(payments).values(payment).returning();
+    return result[0];
+  }
+
+  async getPayment(id: string): Promise<Payment | undefined> {
+    const result = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getPaymentsByCreator(creatorId: string): Promise<Payment[]> {
+    return await db
+      .select()
+      .from(payments)
+      .where(eq(payments.creatorId, creatorId))
+      .orderBy(desc(payments.createdAt));
+  }
+
+  async getPaymentsByCompany(companyId: string): Promise<Payment[]> {
+    return await db
+      .select()
+      .from(payments)
+      .where(eq(payments.companyId, companyId))
+      .orderBy(desc(payments.createdAt));
+  }
+
+  async getAllPayments(): Promise<any[]> {
+    const result = await db
+      .select({
+        id: payments.id,
+        applicationId: payments.applicationId,
+        creatorId: payments.creatorId,
+        creatorName: sql<string>`COALESCE(creator.first_name || ' ' || creator.last_name, creator.email)`,
+        creatorEmail: sql<string>`creator.email`,
+        companyId: payments.companyId,
+        companyName: sql<string>`company.legal_name`,
+        offerId: payments.offerId,
+        offerTitle: sql<string>`offers.title`,
+        grossAmount: payments.grossAmount,
+        platformFeeAmount: payments.platformFeeAmount,
+        stripeFeeAmount: payments.stripeFeeAmount,
+        netAmount: payments.netAmount,
+        status: payments.status,
+        paymentMethod: payments.paymentMethod,
+        description: payments.description,
+        initiatedAt: payments.initiatedAt,
+        completedAt: payments.completedAt,
+        createdAt: payments.createdAt,
+      })
+      .from(payments)
+      .innerJoin(users.as('creator'), eq(payments.creatorId, sql.raw('creator.id')))
+      .innerJoin(users.as('company'), eq(payments.companyId, sql.raw('company.id')))
+      .innerJoin(offers, eq(payments.offerId, offers.id))
+      .orderBy(desc(payments.createdAt));
+    
+    return result;
+  }
+
+  async updatePaymentStatus(id: string, status: string, updates?: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const result = await db
+      .update(payments)
+      .set({
+        status: status as any,
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(payments.id, id))
+      .returning();
+    return result[0];
   }
 }
 

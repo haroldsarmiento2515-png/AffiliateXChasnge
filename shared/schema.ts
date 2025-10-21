@@ -22,6 +22,7 @@ export const offerStatusEnum = pgEnum('offer_status', ['draft', 'pending_review'
 export const commissionTypeEnum = pgEnum('commission_type', ['per_sale', 'per_lead', 'per_click', 'monthly_retainer', 'hybrid']);
 export const applicationStatusEnum = pgEnum('application_status', ['pending', 'approved', 'active', 'completed', 'rejected']);
 export const payoutMethodEnum = pgEnum('payout_method', ['etransfer', 'wire', 'paypal', 'crypto']);
+export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'processing', 'completed', 'failed', 'refunded']);
 
 // Session storage table (Required for Replit Auth)
 export const sessions = pgTable(
@@ -414,6 +415,57 @@ export const paymentSettingsRelations = relations(paymentSettings, ({ one }) => 
   }),
 }));
 
+// Payments & Transactions
+export const payments = pgTable("payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").notNull().references(() => applications.id, { onDelete: 'cascade' }),
+  creatorId: varchar("creator_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  companyId: varchar("company_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  offerId: varchar("offer_id").notNull().references(() => offers.id, { onDelete: 'cascade' }),
+  
+  // Payment amounts (all in USD)
+  grossAmount: decimal("gross_amount", { precision: 10, scale: 2 }).notNull(), // Total amount before fees
+  platformFeeAmount: decimal("platform_fee_amount", { precision: 10, scale: 2 }).notNull(), // 7% platform fee
+  stripeFeeAmount: decimal("stripe_fee_amount", { precision: 10, scale: 2 }).notNull(), // Stripe processing fee
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(), // Amount creator receives
+  
+  // Stripe references
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  stripeTransferId: varchar("stripe_transfer_id"),
+  
+  // Payment metadata
+  status: paymentStatusEnum("status").notNull().default('pending'),
+  paymentMethod: varchar("payment_method"), // e.g., "stripe", "manual"
+  description: text("description"),
+  
+  // Timestamps
+  initiatedAt: timestamp("initiated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  failedAt: timestamp("failed_at"),
+  refundedAt: timestamp("refunded_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  application: one(applications, {
+    fields: [payments.applicationId],
+    references: [applications.id],
+  }),
+  creator: one(users, {
+    fields: [payments.creatorId],
+    references: [users.id],
+  }),
+  company: one(users, {
+    fields: [payments.companyId],
+    references: [users.id],
+  }),
+  offer: one(offers, {
+    fields: [payments.offerId],
+    references: [offers.id],
+  }),
+}));
+
 // Type exports for Replit Auth
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -429,6 +481,7 @@ export const insertMessageSchema = createInsertSchema(messages).omit({ id: true,
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true, updatedAt: true, companyResponse: true, companyRespondedAt: true, isEdited: true });
 export const insertFavoriteSchema = createInsertSchema(favorites).omit({ id: true, createdAt: true });
 export const insertPaymentSettingSchema = createInsertSchema(paymentSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true, initiatedAt: true, completedAt: true, failedAt: true, refundedAt: true });
 
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -452,3 +505,5 @@ export type InsertFavorite = z.infer<typeof insertFavoriteSchema>;
 export type Analytics = typeof analytics.$inferSelect;
 export type PaymentSetting = typeof paymentSettings.$inferSelect;
 export type InsertPaymentSetting = z.infer<typeof insertPaymentSettingSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
