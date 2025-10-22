@@ -94,7 +94,7 @@ export interface IStorage {
 
   // Messages & Conversations
   getConversation(id: string): Promise<any>;
-  getConversationsByUser(userId: string): Promise<any[]>;
+  getConversationsByUser(userId: string, userRole: string, companyProfileId?: string | null): Promise<any[]>;
   createConversation(data: any): Promise<any>;
   createMessage(message: InsertMessage): Promise<Message>;
   getMessages(conversationId: string): Promise<Message[]>;
@@ -460,12 +460,73 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getConversationsByUser(userId: string): Promise<any[]> {
-    return await db
-      .select()
+  async getConversationsByUser(userId: string, userRole: string, companyProfileId: string | null = null): Promise<any[]> {
+    // Build the where clause based on role
+    const whereClause = userRole === 'company' && companyProfileId
+      ? eq(conversations.companyId, companyProfileId)
+      : eq(conversations.creatorId, userId);
+
+    const result = await db
+      .select({
+        id: conversations.id,
+        applicationId: conversations.applicationId,
+        creatorId: conversations.creatorId,
+        companyId: conversations.companyId,
+        offerId: conversations.offerId,
+        lastMessageAt: conversations.lastMessageAt,
+        creatorUnreadCount: conversations.creatorUnreadCount,
+        companyUnreadCount: conversations.companyUnreadCount,
+        createdAt: conversations.createdAt,
+        updatedAt: conversations.updatedAt,
+        // Offer info
+        offerTitle: offers.title,
+        // Creator info
+        creatorFirstName: users.firstName,
+        creatorLastName: users.lastName,
+        creatorEmail: users.email,
+        creatorProfileImageUrl: users.profileImageUrl,
+        // Company info
+        companyLegalName: companyProfiles.legalName,
+        companyTradeName: companyProfiles.tradeName,
+        companyLogoUrl: companyProfiles.logoUrl,
+        companyUserId: companyProfiles.userId,
+      })
       .from(conversations)
-      .where(eq(conversations.creatorId, userId))
+      .innerJoin(offers, eq(conversations.offerId, offers.id))
+      .innerJoin(users, eq(conversations.creatorId, users.id))
+      .innerJoin(companyProfiles, eq(conversations.companyId, companyProfiles.id))
+      .where(whereClause)
       .orderBy(desc(conversations.lastMessageAt));
+
+    // Transform to include otherUser field based on current user role
+    return result.map(conv => ({
+      id: conv.id,
+      applicationId: conv.applicationId,
+      creatorId: conv.creatorId,
+      companyId: conv.companyId,
+      offerId: conv.offerId,
+      offerTitle: conv.offerTitle,
+      lastMessageAt: conv.lastMessageAt,
+      creatorUnreadCount: conv.creatorUnreadCount,
+      companyUnreadCount: conv.companyUnreadCount,
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt,
+      // Set otherUser based on who is viewing
+      otherUser: userRole === 'company' ? {
+        id: conv.creatorId,
+        name: `${conv.creatorFirstName || ''} ${conv.creatorLastName || ''}`.trim() || conv.creatorEmail,
+        firstName: conv.creatorFirstName,
+        lastName: conv.creatorLastName,
+        email: conv.creatorEmail,
+        profileImageUrl: conv.creatorProfileImageUrl,
+      } : {
+        id: conv.companyUserId,
+        name: conv.companyTradeName || conv.companyLegalName,
+        legalName: conv.companyLegalName,
+        tradeName: conv.companyTradeName,
+        logoUrl: conv.companyLogoUrl,
+      }
+    }));
   }
 
   async createConversation(data: any): Promise<any> {

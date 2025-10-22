@@ -267,7 +267,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const rejected = await storage.updateApplication(application.id, {
         status: 'rejected',
-        updatedAt: new Date(),
       });
 
       res.json(rejected);
@@ -475,8 +474,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Messages routes
   app.get("/api/conversations", requireAuth, async (req, res) => {
     try {
-      const userId = (req.user as any).id;
-      const conversations = await storage.getConversationsByUser(userId);
+      const user = req.user as any;
+      const userId = user.id;
+      const userRole = user.role;
+      
+      // Get company profile ID if user is a company
+      let companyProfileId = null;
+      if (userRole === 'company') {
+        const companyProfile = await storage.getCompanyProfile(userId);
+        companyProfileId = companyProfile?.id;
+      }
+      
+      const conversations = await storage.getConversationsByUser(userId, userRole, companyProfileId);
       res.json(conversations);
     } catch (error: any) {
       res.status(500).send(error.message);
@@ -523,23 +532,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Application not found" });
       }
 
-      // Find existing conversation for this application
-      const existingConversations = await storage.getConversationsByUser(userId);
-      const existingConversation = existingConversations.find(
-        (c: any) => c.applicationId === applicationId
-      );
-
-      if (existingConversation) {
-        return res.json({ conversationId: existingConversation.id });
-      }
-
-      // Get company profile for the current user (if company)
+      // Get user role and company profile
       const user = req.user as any;
       let companyId: string | null = null;
+      let companyProfileId: string | null = null;
 
       if (user.role === 'company') {
         const companyProfile = await storage.getCompanyProfile(userId);
         companyId = companyProfile?.id || null;
+        companyProfileId = companyProfile?.id || null;
       } else {
         // If creator, get company from offer
         const offer = await storage.getOffer(application.offerId);
@@ -548,6 +549,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!companyId) {
         return res.status(400).json({ error: "Could not determine company" });
+      }
+
+      // Find existing conversation for this application
+      const existingConversations = await storage.getConversationsByUser(userId, user.role, companyProfileId);
+      const existingConversation = existingConversations.find(
+        (c: any) => c.applicationId === applicationId
+      );
+
+      if (existingConversation) {
+        return res.json({ conversationId: existingConversation.id });
       }
 
       // Create new conversation
