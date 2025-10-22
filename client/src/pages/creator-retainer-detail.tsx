@@ -34,9 +34,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import { Label } from "@/components/ui/label";
 
 const uploadDeliverableSchema = z.object({
-  videoUrl: z.string().url("Must be a valid URL"),
   platformUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
@@ -52,6 +53,7 @@ export default function CreatorRetainerDetail() {
   const { user } = useAuth();
   const contractId = params?.id;
   const [open, setOpen] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
 
   const { data: contract, isLoading } = useQuery<any>({
     queryKey: ["/api/retainer-contracts", contractId],
@@ -70,7 +72,6 @@ export default function CreatorRetainerDetail() {
   const form = useForm<UploadDeliverableForm>({
     resolver: zodResolver(uploadDeliverableSchema),
     defaultValues: {
-      videoUrl: "",
       platformUrl: "",
       title: "",
       description: "",
@@ -79,13 +80,39 @@ export default function CreatorRetainerDetail() {
     },
   });
 
+  const handleGetUploadUrl = async () => {
+    const response = await fetch("/api/objects/upload", {
+      method: "POST",
+      credentials: "include",
+    });
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = (result: any) => {
+    if (result.successful && result.successful[0]) {
+      const uploadedUrl = result.successful[0].uploadURL.split("?")[0];
+      setVideoUrl(uploadedUrl);
+      toast({
+        title: "Video Uploaded",
+        description: "Video file uploaded successfully. Now fill in the details.",
+      });
+    }
+  };
+
   const uploadMutation = useMutation({
     mutationFn: async (data: UploadDeliverableForm) => {
+      if (!videoUrl) {
+        throw new Error("Please upload a video file first");
+      }
       const payload = {
         contractId,
         monthNumber: parseInt(data.monthNumber),
         videoNumber: parseInt(data.videoNumber),
-        videoUrl: data.videoUrl,
+        videoUrl: videoUrl,
         platformUrl: data.platformUrl || undefined,
         title: data.title,
         description: data.description || undefined,
@@ -100,6 +127,7 @@ export default function CreatorRetainerDetail() {
       });
       setOpen(false);
       form.reset();
+      setVideoUrl("");
     },
     onError: (error: Error) => {
       toast({
@@ -261,26 +289,27 @@ export default function CreatorRetainerDetail() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="videoUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Video File URL</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="https://storage.googleapis.com/..."
-                            data-testid="input-video-url"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Upload video to storage and paste the URL here
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
+                  <div className="space-y-2">
+                    <Label>Video File</Label>
+                    <ObjectUploader
+                      maxNumberOfFiles={1}
+                      maxFileSize={524288000}
+                      onGetUploadParameters={handleGetUploadUrl}
+                      onComplete={handleUploadComplete}
+                    >
+                      {videoUrl ? "Video Uploaded ✓" : "Upload Video File"}
+                    </ObjectUploader>
+                    {videoUrl && (
+                      <p className="text-xs text-muted-foreground">
+                        Video uploaded successfully
+                      </p>
                     )}
-                  />
+                    {!videoUrl && (
+                      <p className="text-xs text-muted-foreground">
+                        Click to upload your video file (max 500MB)
+                      </p>
+                    )}
+                  </div>
 
                   <FormField
                     control={form.control}
@@ -310,6 +339,7 @@ export default function CreatorRetainerDetail() {
                       onClick={() => {
                         setOpen(false);
                         form.reset();
+                        setVideoUrl("");
                       }}
                     >
                       Cancel
