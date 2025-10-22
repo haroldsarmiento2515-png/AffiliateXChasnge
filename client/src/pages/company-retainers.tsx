@@ -81,6 +81,7 @@ export default function CompanyRetainers() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateRetainerForm) => {
+      console.log("Creating retainer with data:", data);
       const payload = {
         ...data,
         monthlyAmount: parseFloat(data.monthlyAmount),
@@ -89,6 +90,7 @@ export default function CompanyRetainers() {
         minimumFollowers: data.minimumFollowers ? parseInt(data.minimumFollowers) : undefined,
         niches: data.niches ? data.niches.split(",").map((n) => n.trim()).filter(Boolean) : [],
       };
+      console.log("Payload being sent:", payload);
       return await apiRequest("POST", "/api/company/retainer-contracts", payload);
     },
     onSuccess: () => {
@@ -100,16 +102,20 @@ export default function CompanyRetainers() {
       setOpen(false);
       form.reset();
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      console.error("Error creating retainer:", error);
+      const errorMessage = error?.response?.data || error?.message || "Failed to create retainer contract";
       toast({
-        title: "Error",
-        description: error.message || "Failed to create retainer contract",
+        title: "Error Creating Contract",
+        description: String(errorMessage),
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = (data: CreateRetainerForm) => {
+    console.log("Form submitted with:", data);
+    console.log("Form errors:", form.formState.errors);
     createMutation.mutate(data);
   };
 
