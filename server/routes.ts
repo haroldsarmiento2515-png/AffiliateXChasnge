@@ -4,6 +4,9 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./localAuth";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { db } from "./db";
+import { offerVideos } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   insertCreatorProfileSchema,
@@ -874,23 +877,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/offer-videos", requireAuth, requireRole('company'), async (req, res) => {
-    if (!req.body.videoUrl || !req.body.offerId) {
-      return res.status(400).json({ error: "videoUrl and offerId are required" });
-    }
-    const userId = (req.user as any).id;
+  // Offer Videos endpoints
+  app.get("/api/offers/:offerId/videos", requireAuth, async (req, res) => {
     try {
+      const videos = await storage.getOfferVideos(req.params.offerId);
+      res.json(videos);
+    } catch (error: any) {
+      console.error("Error fetching offer videos:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.post("/api/offers/:offerId/videos", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const offerId = req.params.offerId;
+      
+      // Verify the offer belongs to this company
+      const offer = await storage.getOffer(offerId);
+      if (!offer) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+      
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile || offer.companyId !== companyProfile.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Check video count (max 12)
+      const existingVideos = await storage.getOfferVideos(offerId);
+      if (existingVideos.length >= 12) {
+        return res.status(400).json({ error: "Maximum 12 videos allowed per offer" });
+      }
+
+      const { videoUrl, title, description, creatorCredit, originalPlatform, thumbnailUrl } = req.body;
+      if (!videoUrl || !title) {
+        return res.status(400).json({ error: "videoUrl and title are required" });
+      }
+
+      // Set ACL for the video
       const objectStorageService = new ObjectStorageService();
       const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
-        req.body.videoUrl,
+        videoUrl,
         {
           owner: userId,
           visibility: "public",
         },
       );
-      res.status(200).json({ objectPath });
-    } catch (error) {
-      console.error("Error setting offer video:", error);
+
+      // Create video record in database
+      const video = await storage.createOfferVideo({
+        offerId,
+        videoUrl: objectPath,
+        title,
+        description: description || null,
+        creatorCredit: creatorCredit || null,
+        originalPlatform: originalPlatform || null,
+        thumbnailUrl: thumbnailUrl || null,
+        orderIndex: existingVideos.length, // Auto-increment order
+      });
+
+      res.json(video);
+    } catch (error: any) {
+      console.error("Error creating offer video:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/offer-videos/:id", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const videoId = req.params.id;
+      
+      // Get the video to verify ownership
+      const videos = await db.select().from(offerVideos).where(eq(offerVideos.id, videoId)).limit(1);
+      const video = videos[0];
+      
+      if (!video) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+
+      // Verify the offer belongs to this company
+      const offer = await storage.getOffer(video.offerId);
+      if (!offer) {
+        return res.status(404).json({ error: "Offer not found" });
+      }
+      
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile || offer.companyId !== companyProfile.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Delete the video
+      await storage.deleteOfferVideo(videoId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting offer video:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
