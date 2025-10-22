@@ -19,8 +19,8 @@
 ## Color Palette
 
 ### Light Mode
-- **Primary Brand**: 270 85% 60% (vibrant purple - trust and creativity)
-- **Primary Hover**: 270 85% 55%
+- **Primary Brand**: 210 90% 55% (vibrant blue - trust and professionalism)
+- **Primary Hover**: 210 90% 50%
 - **Secondary**: 200 90% 50% (energetic cyan - action and opportunity)
 - **Background**: 0 0% 100%
 - **Surface**: 240 10% 98%
@@ -32,8 +32,8 @@
 - **Error**: 0 84% 60%
 
 ### Dark Mode
-- **Primary Brand**: 270 85% 65%
-- **Primary Hover**: 270 85% 70%
+- **Primary Brand**: 210 90% 60%
+- **Primary Hover**: 210 90% 65%
 - **Secondary**: 200 90% 55%
 - **Background**: 240 10% 10%
 - **Surface**: 240 8% 14%
