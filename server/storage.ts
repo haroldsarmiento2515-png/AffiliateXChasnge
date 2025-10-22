@@ -391,14 +391,67 @@ export class DatabaseStorage implements IStorage {
         completedAt: applications.completedAt,
         createdAt: applications.createdAt,
         updatedAt: applications.updatedAt,
+        // Include full creator data
+        creatorFirstName: users.firstName,
+        creatorLastName: users.lastName,
+        creatorProfileImageUrl: users.profileImageUrl,
+        creatorBio: creatorProfiles.bio,
+        creatorYoutubeUrl: creatorProfiles.youtubeUrl,
+        creatorTiktokUrl: creatorProfiles.tiktokUrl,
+        creatorInstagramUrl: creatorProfiles.instagramUrl,
+        creatorNiches: creatorProfiles.niches,
+        // Analytics aggregations
+        clickCount: sql<number>`COALESCE(SUM(${analytics.clicks}), 0)`,
+        uniqueClickCount: sql<number>`COALESCE(SUM(${analytics.uniqueClicks}), 0)`,
+        conversionCount: sql<number>`COALESCE(SUM(${analytics.conversions}), 0)`,
+        totalEarnings: sql<string>`COALESCE(SUM(${analytics.earnings}), 0)`,
       })
       .from(applications)
       .innerJoin(offers, eq(applications.offerId, offers.id))
       .innerJoin(users, eq(applications.creatorId, users.id))
+      .leftJoin(creatorProfiles, eq(users.id, creatorProfiles.userId))
+      .leftJoin(analytics, eq(applications.id, analytics.applicationId))
       .where(eq(offers.companyId, companyId))
+      .groupBy(
+        applications.id,
+        offers.id,
+        users.id,
+        creatorProfiles.id
+      )
       .orderBy(desc(applications.createdAt));
     
-    return result;
+    // Transform the data to include a nested creator object
+    return result.map(app => ({
+      id: app.id,
+      offerId: app.offerId,
+      offerTitle: app.offerTitle,
+      creatorId: app.creatorId,
+      creatorName: app.creatorName,
+      creatorEmail: app.creatorEmail,
+      message: app.message,
+      status: app.status,
+      trackingLink: app.trackingLink,
+      trackingCode: app.trackingCode,
+      approvedAt: app.approvedAt,
+      completedAt: app.completedAt,
+      createdAt: app.createdAt,
+      updatedAt: app.updatedAt,
+      clickCount: app.clickCount,
+      conversionCount: app.conversionCount,
+      totalEarnings: app.totalEarnings,
+      creator: {
+        id: app.creatorId,
+        firstName: app.creatorFirstName,
+        lastName: app.creatorLastName,
+        email: app.creatorEmail,
+        profileImageUrl: app.creatorProfileImageUrl,
+        bio: app.creatorBio,
+        youtubeUrl: app.creatorYoutubeUrl,
+        tiktokUrl: app.creatorTiktokUrl,
+        instagramUrl: app.creatorInstagramUrl,
+        niches: app.creatorNiches,
+      }
+    }));
   }
 
   // Messages & Conversations
