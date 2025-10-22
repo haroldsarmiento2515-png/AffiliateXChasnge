@@ -36,7 +36,8 @@ export default function CompanyApplications() {
 
   const completeApplicationMutation = useMutation({
     mutationFn: async (applicationId: string) => {
-      return await apiRequest(`/api/applications/${applicationId}/complete`, 'POST');
+      const response = await apiRequest('POST', `/api/applications/${applicationId}/complete`);
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company/applications"] });
@@ -56,7 +57,8 @@ export default function CompanyApplications() {
 
   const startConversationMutation = useMutation({
     mutationFn: async (applicationId: string) => {
-      return await apiRequest('/api/conversations/start', 'POST', { applicationId });
+      const response = await apiRequest('POST', '/api/conversations/start', { applicationId });
+      return response.json();
     },
     onSuccess: (data: any) => {
       // Redirect to messages with conversation selected
