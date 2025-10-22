@@ -17,6 +17,7 @@ import { z } from "zod";
 
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['creator', 'company', 'admin']);
+export const userAccountStatusEnum = pgEnum('user_account_status', ['active', 'suspended', 'banned']);
 export const companyStatusEnum = pgEnum('company_status', ['pending', 'approved', 'rejected']);
 export const offerStatusEnum = pgEnum('offer_status', ['draft', 'pending_review', 'approved', 'paused', 'archived']);
 export const commissionTypeEnum = pgEnum('commission_type', ['per_sale', 'per_lead', 'per_click', 'monthly_retainer', 'hybrid']);
@@ -48,6 +49,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role").notNull().default('creator'),
+  accountStatus: userAccountStatusEnum("account_status").notNull().default('active'),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

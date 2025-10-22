@@ -23,6 +23,11 @@ export default function PaymentSettings() {
   const { isAuthenticated, isLoading } = useAuth();
   const [payoutMethod, setPayoutMethod] = useState("etransfer");
   const [payoutEmail, setPayoutEmail] = useState("");
+  const [bankRoutingNumber, setBankRoutingNumber] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [paypalEmail, setPaypalEmail] = useState("");
+  const [cryptoWalletAddress, setCryptoWalletAddress] = useState("");
+  const [cryptoNetwork, setCryptoNetwork] = useState("");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -44,10 +49,23 @@ export default function PaymentSettings() {
 
   const addPaymentMethodMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", "/api/payment-settings", {
+      const payload: any = {
         payoutMethod,
-        payoutEmail,
-      });
+      };
+
+      if (payoutMethod === 'etransfer') {
+        payload.payoutEmail = payoutEmail;
+      } else if (payoutMethod === 'wire') {
+        payload.bankRoutingNumber = bankRoutingNumber;
+        payload.bankAccountNumber = bankAccountNumber;
+      } else if (payoutMethod === 'paypal') {
+        payload.paypalEmail = paypalEmail;
+      } else if (payoutMethod === 'crypto') {
+        payload.cryptoWalletAddress = cryptoWalletAddress;
+        payload.cryptoNetwork = cryptoNetwork;
+      }
+
+      return await apiRequest("POST", "/api/payment-settings", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payment-settings"] });
@@ -56,6 +74,11 @@ export default function PaymentSettings() {
         description: "Payment method added successfully",
       });
       setPayoutEmail("");
+      setBankRoutingNumber("");
+      setBankAccountNumber("");
+      setPaypalEmail("");
+      setCryptoWalletAddress("");
+      setCryptoNetwork("");
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -144,26 +167,107 @@ export default function PaymentSettings() {
                 <SelectItem value="etransfer">E-Transfer</SelectItem>
                 <SelectItem value="wire">Wire/ACH</SelectItem>
                 <SelectItem value="paypal">PayPal</SelectItem>
-                <SelectItem value="crypto">Crypto</SelectItem>
+                <SelectItem value="crypto">Cryptocurrency</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="your@email.com"
-              value={payoutEmail}
-              onChange={(e) => setPayoutEmail(e.target.value)}
-              data-testid="input-payout-email"
-            />
-          </div>
+          {/* E-Transfer Fields */}
+          {payoutMethod === 'etransfer' && (
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                value={payoutEmail}
+                onChange={(e) => setPayoutEmail(e.target.value)}
+                data-testid="input-payout-email"
+              />
+            </div>
+          )}
+
+          {/* Wire/ACH Fields */}
+          {payoutMethod === 'wire' && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="routing">Bank Routing Number</Label>
+                <Input
+                  id="routing"
+                  placeholder="123456789"
+                  value={bankRoutingNumber}
+                  onChange={(e) => setBankRoutingNumber(e.target.value)}
+                  data-testid="input-routing-number"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="account">Bank Account Number</Label>
+                <Input
+                  id="account"
+                  placeholder="123456789012"
+                  value={bankAccountNumber}
+                  onChange={(e) => setBankAccountNumber(e.target.value)}
+                  data-testid="input-account-number"
+                />
+              </div>
+            </>
+          )}
+
+          {/* PayPal Fields */}
+          {payoutMethod === 'paypal' && (
+            <div className="space-y-2">
+              <Label htmlFor="paypal-email">PayPal Email</Label>
+              <Input
+                id="paypal-email"
+                type="email"
+                placeholder="your@paypal.com"
+                value={paypalEmail}
+                onChange={(e) => setPaypalEmail(e.target.value)}
+                data-testid="input-paypal-email"
+              />
+            </div>
+          )}
+
+          {/* Crypto Fields */}
+          {payoutMethod === 'crypto' && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="wallet">Wallet Address</Label>
+                <Input
+                  id="wallet"
+                  placeholder="0x..."
+                  value={cryptoWalletAddress}
+                  onChange={(e) => setCryptoWalletAddress(e.target.value)}
+                  data-testid="input-crypto-wallet"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="network">Network</Label>
+                <Select value={cryptoNetwork} onValueChange={setCryptoNetwork}>
+                  <SelectTrigger id="network" data-testid="select-crypto-network">
+                    <SelectValue placeholder="Select network" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ethereum">Ethereum (ERC-20)</SelectItem>
+                    <SelectItem value="bsc">Binance Smart Chain (BEP-20)</SelectItem>
+                    <SelectItem value="polygon">Polygon (MATIC)</SelectItem>
+                    <SelectItem value="bitcoin">Bitcoin</SelectItem>
+                    <SelectItem value="tron">Tron (TRC-20)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           <Button
             onClick={() => addPaymentMethodMutation.mutate()}
-            disabled={!payoutEmail || addPaymentMethodMutation.isPending}
+            disabled={
+              addPaymentMethodMutation.isPending ||
+              (payoutMethod === 'etransfer' && !payoutEmail) ||
+              (payoutMethod === 'wire' && (!bankRoutingNumber || !bankAccountNumber)) ||
+              (payoutMethod === 'paypal' && !paypalEmail) ||
+              (payoutMethod === 'crypto' && (!cryptoWalletAddress || !cryptoNetwork))
+            }
             className="gap-2"
             data-testid="button-add-payment"
           >

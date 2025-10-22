@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sheet";
 import { Search, SlidersHorizontal, TrendingUp, DollarSign, Clock, Star, Play, Heart } from "lucide-react";
 import { Link } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 const NICHES = [
   "Technology", "Fashion", "Beauty", "Fitness", "Gaming", 
@@ -90,6 +91,38 @@ export default function Browse() {
     setCommissionType("");
     setCommissionRange([0, 10000]);
     setSearchTerm("");
+  };
+
+  const { data: favorites = [] } = useQuery<any[]>({
+    queryKey: ["/api/favorites"],
+    enabled: isAuthenticated,
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: async ({ offerId, isFav }: { offerId: string; isFav: boolean }) => {
+      if (isFav) {
+        await apiRequest("DELETE", `/api/favorites/${offerId}`);
+      } else {
+        await apiRequest("POST", "/api/favorites", { offerId });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: "Failed to update favorites",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFavoriteToggle = (e: React.MouseEvent, offerId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const isFav = favorites.some(f => f.offerId === offerId);
+    favoriteMutation.mutate({ offerId, isFav });
   };
 
   if (isLoading) {
@@ -242,32 +275,32 @@ export default function Browse() {
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {offers.map((offer) => (
-            <Link key={offer.id} href={`/offers/${offer.id}`}>
-              <Card className="hover-elevate cursor-pointer border-card-border h-full" data-testid={`card-offer-${offer.id}`}>
-                <div className="aspect-video relative bg-muted rounded-t-lg overflow-hidden">
-                  {offer.featuredImageUrl ? (
-                    <img src={offer.featuredImageUrl} alt={offer.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Play className="h-12 w-12 text-muted-foreground/50" />
-                    </div>
-                  )}
-                  {offer.isPriority && (
-                    <Badge className="absolute top-2 right-2 bg-primary">
-                      Featured
-                    </Badge>
-                  )}
-                  <button
-                    className="absolute top-2 left-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover-elevate"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      // Handle favorite toggle
-                    }}
-                  >
-                    <Heart className="h-4 w-4" />
-                  </button>
-                </div>
+          {offers.map((offer) => {
+            const isFavorite = favorites.some(f => f.offerId === offer.id);
+            return (
+              <Link key={offer.id} href={`/offers/${offer.id}`}>
+                <Card className="hover-elevate cursor-pointer border-card-border h-full" data-testid={`card-offer-${offer.id}`}>
+                  <div className="aspect-video relative bg-muted rounded-t-lg overflow-hidden">
+                    {offer.featuredImageUrl ? (
+                      <img src={offer.featuredImageUrl} alt={offer.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Play className="h-12 w-12 text-muted-foreground/50" />
+                      </div>
+                    )}
+                    {offer.isPriority && (
+                      <Badge className="absolute top-2 right-2 bg-primary">
+                        Featured
+                      </Badge>
+                    )}
+                    <button
+                      className="absolute top-2 left-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center hover-elevate"
+                      onClick={(e) => handleFavoriteToggle(e, offer.id)}
+                      data-testid={`button-favorite-${offer.id}`}
+                    >
+                      <Heart className={`h-4 w-4 ${isFavorite ? 'fill-primary text-primary' : ''}`} />
+                    </button>
+                  </div>
 
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
@@ -295,7 +328,8 @@ export default function Browse() {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

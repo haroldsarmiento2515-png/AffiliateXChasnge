@@ -59,6 +59,10 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<InsertUser>): Promise<User | undefined>;
+  getAllCreators(): Promise<any[]>;
+  suspendUser(id: string): Promise<User | undefined>;
+  unsuspendUser(id: string): Promise<User | undefined>;
+  banUser(id: string): Promise<User | undefined>;
 
   // Creator Profiles
   getCreatorProfile(userId: string): Promise<CreatorProfile | undefined>;
@@ -211,6 +215,54 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .update(users)
       .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getAllCreators(): Promise<any[]> {
+    const creators = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        accountStatus: users.accountStatus,
+        createdAt: users.createdAt,
+        profile: creatorProfiles,
+      })
+      .from(users)
+      .leftJoin(creatorProfiles, eq(users.id, creatorProfiles.userId))
+      .where(eq(users.role, 'creator'))
+      .orderBy(desc(users.createdAt));
+
+    return creators;
+  }
+
+  async suspendUser(id: string): Promise<User | undefined> {
+    const result = await db
+      .update(users)
+      .set({ accountStatus: 'suspended', updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async unsuspendUser(id: string): Promise<User | undefined> {
+    const result = await db
+      .update(users)
+      .set({ accountStatus: 'active', updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async banUser(id: string): Promise<User | undefined> {
+    const result = await db
+      .update(users)
+      .set({ accountStatus: 'banned', updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
     return result[0];

@@ -39,9 +39,7 @@ export default function CompanyDashboard() {
 
   const completeApplicationMutation = useMutation({
     mutationFn: async (applicationId: string) => {
-      return await apiRequest(`/api/applications/${applicationId}/complete`, {
-        method: 'POST',
-      });
+      return await apiRequest('POST', `/api/applications/${applicationId}/complete`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company/applications"] });

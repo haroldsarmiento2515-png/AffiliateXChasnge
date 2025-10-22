@@ -146,14 +146,14 @@ export function AppSidebar() {
       icon: TrendingUp,
     },
     {
+      title: "Creator Management",
+      url: "/admin/creators",
+      icon: Users,
+    },
+    {
       title: "Review Management",
       url: "/admin/reviews",
       icon: Star,
-    },
-    {
-      title: "Users",
-      url: "/admin/users",
-      icon: Users,
     },
   ];
 

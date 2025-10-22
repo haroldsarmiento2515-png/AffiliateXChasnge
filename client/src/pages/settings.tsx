@@ -19,6 +19,9 @@ export default function Settings() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [tiktokUrl, setTiktokUrl] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
+  const [youtubeFollowers, setYoutubeFollowers] = useState("");
+  const [tiktokFollowers, setTiktokFollowers] = useState("");
+  const [instagramFollowers, setInstagramFollowers] = useState("");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -36,15 +39,19 @@ export default function Settings() {
   const { data: profile } = useQuery<any>({
     queryKey: ["/api/profile"],
     enabled: isAuthenticated,
-    onSuccess: (data) => {
-      if (data) {
-        setBio(data.bio || "");
-        setYoutubeUrl(data.youtubeUrl || "");
-        setTiktokUrl(data.tiktokUrl || "");
-        setInstagramUrl(data.instagramUrl || "");
-      }
-    },
   });
+
+  useEffect(() => {
+    if (profile) {
+      setBio(profile.bio || "");
+      setYoutubeUrl(profile.youtubeUrl || "");
+      setTiktokUrl(profile.tiktokUrl || "");
+      setInstagramUrl(profile.instagramUrl || "");
+      setYoutubeFollowers(profile.youtubeFollowers?.toString() || "");
+      setTiktokFollowers(profile.tiktokFollowers?.toString() || "");
+      setInstagramFollowers(profile.instagramFollowers?.toString() || "");
+    }
+  }, [profile]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async () => {
@@ -53,6 +60,9 @@ export default function Settings() {
         youtubeUrl,
         tiktokUrl,
         instagramUrl,
+        youtubeFollowers: youtubeFollowers ? parseInt(youtubeFollowers) : null,
+        tiktokFollowers: tiktokFollowers ? parseInt(tiktokFollowers) : null,
+        instagramFollowers: instagramFollowers ? parseInt(instagramFollowers) : null,
       });
     },
     onSuccess: () => {
@@ -128,40 +138,79 @@ export default function Settings() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="youtube">YouTube URL</Label>
-                <Input
-                  id="youtube"
-                  type="url"
-                  placeholder="https://youtube.com/@yourchannel"
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                  data-testid="input-youtube"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="youtube">YouTube Channel URL</Label>
+                  <Input
+                    id="youtube"
+                    type="url"
+                    placeholder="https://youtube.com/@yourchannel"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    data-testid="input-youtube"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="youtube-followers">YouTube Subscribers</Label>
+                  <Input
+                    id="youtube-followers"
+                    type="number"
+                    placeholder="10000"
+                    value={youtubeFollowers}
+                    onChange={(e) => setYoutubeFollowers(e.target.value)}
+                    data-testid="input-youtube-followers"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tiktok">TikTok URL</Label>
-                <Input
-                  id="tiktok"
-                  type="url"
-                  placeholder="https://tiktok.com/@yourusername"
-                  value={tiktokUrl}
-                  onChange={(e) => setTiktokUrl(e.target.value)}
-                  data-testid="input-tiktok"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="tiktok">TikTok Profile URL</Label>
+                  <Input
+                    id="tiktok"
+                    type="url"
+                    placeholder="https://tiktok.com/@yourusername"
+                    value={tiktokUrl}
+                    onChange={(e) => setTiktokUrl(e.target.value)}
+                    data-testid="input-tiktok"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tiktok-followers">TikTok Followers</Label>
+                  <Input
+                    id="tiktok-followers"
+                    type="number"
+                    placeholder="50000"
+                    value={tiktokFollowers}
+                    onChange={(e) => setTiktokFollowers(e.target.value)}
+                    data-testid="input-tiktok-followers"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="instagram">Instagram URL</Label>
-                <Input
-                  id="instagram"
-                  type="url"
-                  placeholder="https://instagram.com/yourusername"
-                  value={instagramUrl}
-                  onChange={(e) => setInstagramUrl(e.target.value)}
-                  data-testid="input-instagram"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label htmlFor="instagram">Instagram Profile URL</Label>
+                  <Input
+                    id="instagram"
+                    type="url"
+                    placeholder="https://instagram.com/yourusername"
+                    value={instagramUrl}
+                    onChange={(e) => setInstagramUrl(e.target.value)}
+                    data-testid="input-instagram"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instagram-followers">Instagram Followers</Label>
+                  <Input
+                    id="instagram-followers"
+                    type="number"
+                    placeholder="25000"
+                    value={instagramFollowers}
+                    onChange={(e) => setInstagramFollowers(e.target.value)}
+                    data-testid="input-instagram-followers"
+                  />
+                </div>
               </div>
 
               <Button
