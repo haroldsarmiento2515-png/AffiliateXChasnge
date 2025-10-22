@@ -25,6 +25,8 @@ import CompanyCreators from "@/pages/company-creators";
 import CompanyReviews from "@/pages/company-reviews";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminReviews from "@/pages/admin-reviews";
+import AdminCompanies from "@/pages/admin-companies";
+import AdminOffers from "@/pages/admin-offers";
 import Onboarding from "@/pages/onboarding";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
@@ -94,8 +96,8 @@ function Router() {
                   <>
                     <Route path="/" component={AdminDashboard} />
                     <Route path="/admin" component={AdminDashboard} />
-                    <Route path="/admin/companies" component={AdminDashboard} />
-                    <Route path="/admin/offers" component={AdminDashboard} />
+                    <Route path="/admin/companies" component={AdminCompanies} />
+                    <Route path="/admin/offers" component={AdminOffers} />
                     <Route path="/admin/reviews" component={AdminReviews} />
                     <Route path="/admin/users" component={AdminDashboard} />
                   </>
