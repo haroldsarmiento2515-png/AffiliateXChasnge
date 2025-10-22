@@ -61,8 +61,8 @@ export default function CompanyApplications() {
       return response.json();
     },
     onSuccess: (data: any) => {
-      // Redirect to messages with conversation selected
-      setLocation(`/messages?conversation=${data.conversationId}`);
+      // Redirect to company messages with conversation selected
+      setLocation(`/company/messages?conversation=${data.conversationId}`);
     },
     onError: (error: any) => {
       toast({
@@ -73,9 +73,63 @@ export default function CompanyApplications() {
     },
   });
 
+  const approveApplicationMutation = useMutation({
+    mutationFn: async (applicationId: string) => {
+      const response = await apiRequest('PUT', `/api/applications/${applicationId}/approve`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/company/applications"] });
+      toast({
+        title: "Application Approved",
+        description: "Creator has been approved and tracking link generated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve application",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rejectApplicationMutation = useMutation({
+    mutationFn: async (applicationId: string) => {
+      const response = await apiRequest('PUT', `/api/applications/${applicationId}/reject`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/company/applications"] });
+      toast({
+        title: "Application Rejected",
+        description: "Application has been rejected.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject application",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleMarkComplete = (applicationId: string, creatorName: string) => {
     if (confirm(`Mark work as complete for ${creatorName}? This action cannot be undone.`)) {
       completeApplicationMutation.mutate(applicationId);
+    }
+  };
+
+  const handleApprove = (applicationId: string) => {
+    if (confirm("Approve this application? This will generate a tracking link for the creator.")) {
+      approveApplicationMutation.mutate(applicationId);
+    }
+  };
+
+  const handleReject = (applicationId: string) => {
+    if (confirm("Reject this application? This action cannot be undone.")) {
+      rejectApplicationMutation.mutate(applicationId);
     }
   };
 
@@ -195,31 +249,60 @@ export default function CompanyApplications() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => handleMessageCreator(app.id)}
-                    variant="outline"
-                    className="flex-1"
-                    disabled={startConversationMutation.isPending}
-                    data-testid={`button-message-creator-${app.id}`}
-                  >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    {startConversationMutation.isPending ? 'Opening...' : 'Message Creator'}
-                  </Button>
-
-                  {app.status === 'approved' && !app.completedAt && (
+                {/* Approve/Reject buttons for pending applications */}
+                {app.status === 'pending' && (
+                  <div className="flex gap-2">
                     <Button
-                      onClick={() => handleMarkComplete(app.id, app.creator?.firstName || 'this creator')}
+                      onClick={() => handleApprove(app.id)}
                       variant="default"
                       className="flex-1"
-                      disabled={completeApplicationMutation.isPending}
-                      data-testid={`button-mark-complete-${app.id}`}
+                      disabled={approveApplicationMutation.isPending}
+                      data-testid={`button-approve-${app.id}`}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      {completeApplicationMutation.isPending ? 'Processing...' : 'Mark Work Complete'}
+                      {approveApplicationMutation.isPending ? 'Approving...' : 'Approve'}
                     </Button>
-                  )}
-                </div>
+                    <Button
+                      onClick={() => handleReject(app.id)}
+                      variant="destructive"
+                      className="flex-1"
+                      disabled={rejectApplicationMutation.isPending}
+                      data-testid={`button-reject-${app.id}`}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      {rejectApplicationMutation.isPending ? 'Rejecting...' : 'Reject'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Message and Complete buttons for approved applications */}
+                {(app.status === 'approved' || app.status === 'rejected') && (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleMessageCreator(app.id)}
+                      variant="outline"
+                      className="flex-1"
+                      disabled={startConversationMutation.isPending}
+                      data-testid={`button-message-creator-${app.id}`}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {startConversationMutation.isPending ? 'Opening...' : 'Message Creator'}
+                    </Button>
+
+                    {app.status === 'approved' && !app.completedAt && (
+                      <Button
+                        onClick={() => handleMarkComplete(app.id, app.creator?.firstName || 'this creator')}
+                        variant="default"
+                        className="flex-1"
+                        disabled={completeApplicationMutation.isPending}
+                        data-testid={`button-mark-complete-${app.id}`}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {completeApplicationMutation.isPending ? 'Processing...' : 'Mark Work Complete'}
+                      </Button>
+                    )}
+                  </div>
+                )}
 
                 {app.completedAt && (
                   <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">

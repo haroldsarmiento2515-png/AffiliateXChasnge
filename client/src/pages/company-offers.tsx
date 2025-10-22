@@ -115,7 +115,7 @@ export default function CompanyOffers() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link href={`/offers/${offer.id}`}>
+                      <Link href={`/company/offers/${offer.id}`}>
                         <Eye className="mr-2 h-4 w-4" />
                         View Details
                       </Link>
@@ -159,7 +159,7 @@ export default function CompanyOffers() {
                   </div>
                 </div>
 
-                <Link href={`/offers/${offer.id}`}>
+                <Link href={`/company/offers/${offer.id}`}>
                   <Button 
                     variant="outline" 
                     className="w-full"
