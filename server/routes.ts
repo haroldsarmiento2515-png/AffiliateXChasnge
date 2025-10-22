@@ -21,6 +21,9 @@ import {
   insertPaymentSettingSchema,
   adminReviewUpdateSchema,
   adminNoteSchema,
+  createRetainerContractSchema,
+  insertRetainerApplicationSchema,
+  insertRetainerDeliverableSchema,
 } from "@shared/schema";
 
 // Alias for convenience
@@ -974,6 +977,270 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error deleting offer video:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // =====================================================
+  // RETAINER CONTRACTS ROUTES
+  // =====================================================
+
+  // Get all open retainer contracts (for creators to browse)
+  app.get("/api/retainer-contracts", requireAuth, requireRole('creator'), async (req, res) => {
+    try {
+      const contracts = await storage.getOpenRetainerContracts();
+      res.json(contracts);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Get specific retainer contract
+  app.get("/api/retainer-contracts/:id", requireAuth, async (req, res) => {
+    try {
+      const contract = await storage.getRetainerContract(req.params.id);
+      if (!contract) return res.status(404).send("Not found");
+      res.json(contract);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Get their retainer contracts
+  app.get("/api/company/retainer-contracts", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const contracts = await storage.getRetainerContractsByCompany(companyProfile.id);
+      res.json(contracts);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Create retainer contract
+  app.post("/api/company/retainer-contracts", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const validated = createRetainerContractSchema.parse(req.body);
+      const contract = await storage.createRetainerContract({ ...validated, companyId: companyProfile.id });
+      res.json(contract);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Update retainer contract
+  app.patch("/api/company/retainer-contracts/:id", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const contract = await storage.getRetainerContract(req.params.id);
+      if (!contract || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      const validated = createRetainerContractSchema.partial().parse(req.body);
+      const updated = await storage.updateRetainerContract(req.params.id, validated);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Delete retainer contract
+  app.delete("/api/company/retainer-contracts/:id", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const contract = await storage.getRetainerContract(req.params.id);
+      if (!contract || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      await storage.deleteRetainerContract(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Creator: Get assigned contracts
+  app.get("/api/creator/retainer-contracts", requireAuth, requireRole('creator'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const contracts = await storage.getRetainerContractsByCreator(userId);
+      res.json(contracts);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Get applications for a contract
+  app.get("/api/retainer-contracts/:id/applications", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const contract = await storage.getRetainerContract(req.params.id);
+      if (!contract || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      const applications = await storage.getRetainerApplicationsByContract(req.params.id);
+      res.json(applications);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Creator: Get their applications
+  app.get("/api/creator/retainer-applications", requireAuth, requireRole('creator'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const applications = await storage.getRetainerApplicationsByCreator(userId);
+      res.json(applications);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Creator: Apply to contract
+  app.post("/api/creator/retainer-contracts/:id/apply", requireAuth, requireRole('creator'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const validated = insertRetainerApplicationSchema.omit({ creatorId: true, contractId: true }).parse(req.body);
+      const application = await storage.createRetainerApplication({ ...validated, contractId: req.params.id, creatorId: userId });
+      res.json(application);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Approve application
+  app.patch("/api/company/retainer-applications/:id/approve", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const application = await storage.getRetainerApplication(req.params.id);
+      if (!application) return res.status(404).send("Application not found");
+      const contract = await storage.getRetainerContract(application.contractId);
+      if (!contract || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      const approved = await storage.approveRetainerApplication(req.params.id, application.contractId, application.creatorId);
+      res.json(approved);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Reject application
+  app.patch("/api/company/retainer-applications/:id/reject", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const application = await storage.getRetainerApplication(req.params.id);
+      if (!application) return res.status(404).send("Application not found");
+      const contract = await storage.getRetainerContract(application.contractId);
+      if (!contract || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      const rejected = await storage.rejectRetainerApplication(req.params.id);
+      res.json(rejected);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Get deliverables for contract
+  app.get("/api/retainer-contracts/:id/deliverables", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const user = req.user as any;
+      const contract = await storage.getRetainerContract(req.params.id);
+      if (!contract) return res.status(404).send("Contract not found");
+      if (user.role === 'company') {
+        const companyProfile = await storage.getCompanyProfile(userId);
+        if (!companyProfile || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      } else if (user.role === 'creator') {
+        if (contract.assignedCreatorId !== userId) return res.status(403).send("Forbidden");
+      }
+      const deliverables = await storage.getRetainerDeliverablesByContract(req.params.id);
+      res.json(deliverables);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Creator: Get their deliverables
+  app.get("/api/creator/retainer-deliverables", requireAuth, requireRole('creator'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const deliverables = await storage.getRetainerDeliverablesByCreator(userId);
+      res.json(deliverables);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Creator: Submit deliverable
+  app.post("/api/creator/retainer-deliverables", requireAuth, requireRole('creator'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const validated = insertRetainerDeliverableSchema.omit({ creatorId: true }).parse(req.body);
+      const contract = await storage.getRetainerContract(validated.contractId);
+      if (!contract || contract.assignedCreatorId !== userId) return res.status(403).send("Forbidden");
+      const deliverable = await storage.createRetainerDeliverable({ ...validated, creatorId: userId });
+      res.json(deliverable);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Approve deliverable
+  app.patch("/api/company/retainer-deliverables/:id/approve", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const deliverable = await storage.getRetainerDeliverable(req.params.id);
+      if (!deliverable) return res.status(404).send("Deliverable not found");
+      const contract = await storage.getRetainerContract(deliverable.contractId);
+      if (!contract || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      const approved = await storage.approveRetainerDeliverable(req.params.id, req.body.reviewNotes);
+      res.json(approved);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Reject deliverable
+  app.patch("/api/company/retainer-deliverables/:id/reject", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const deliverable = await storage.getRetainerDeliverable(req.params.id);
+      if (!deliverable) return res.status(404).send("Deliverable not found");
+      const contract = await storage.getRetainerContract(deliverable.contractId);
+      if (!contract || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      if (!req.body.reviewNotes) return res.status(400).send("Review notes required");
+      const rejected = await storage.rejectRetainerDeliverable(req.params.id, req.body.reviewNotes);
+      res.json(rejected);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Company: Request revision
+  app.patch("/api/company/retainer-deliverables/:id/request-revision", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      if (!companyProfile) return res.status(404).send("Company profile not found");
+      const deliverable = await storage.getRetainerDeliverable(req.params.id);
+      if (!deliverable) return res.status(404).send("Deliverable not found");
+      const contract = await storage.getRetainerContract(deliverable.contractId);
+      if (!contract || contract.companyId !== companyProfile.id) return res.status(403).send("Forbidden");
+      if (!req.body.reviewNotes) return res.status(400).send("Review notes required");
+      const revised = await storage.requestRevision(req.params.id, req.body.reviewNotes);
+      res.json(revised);
+    } catch (error: any) {
+      res.status(500).send(error.message);
     }
   });
 
