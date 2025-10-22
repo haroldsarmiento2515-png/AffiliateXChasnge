@@ -45,8 +45,7 @@ export default function AdminCreators() {
 
   const suspendMutation = useMutation({
     mutationFn: async (creatorId: string) => {
-      const response = await apiRequest("POST", `/api/admin/creators/${creatorId}/suspend`);
-      return response.json();
+      return await apiRequest("POST", `/api/admin/creators/${creatorId}/suspend`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/creators"] });
@@ -68,8 +67,7 @@ export default function AdminCreators() {
 
   const unsuspendMutation = useMutation({
     mutationFn: async (creatorId: string) => {
-      const response = await apiRequest("POST", `/api/admin/creators/${creatorId}/unsuspend`);
-      return response.json();
+      return await apiRequest("POST", `/api/admin/creators/${creatorId}/unsuspend`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/creators"] });
@@ -91,8 +89,7 @@ export default function AdminCreators() {
 
   const banMutation = useMutation({
     mutationFn: async (creatorId: string) => {
-      const response = await apiRequest("POST", `/api/admin/creators/${creatorId}/ban`);
-      return response.json();
+      return await apiRequest("POST", `/api/admin/creators/${creatorId}/ban`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/creators"] });
