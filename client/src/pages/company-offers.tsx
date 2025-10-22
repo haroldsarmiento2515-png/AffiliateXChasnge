@@ -32,7 +32,7 @@ export default function CompanyOffers() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: offers = [], isLoading: loadingOffers } = useQuery<any[]>({
-    queryKey: ["/api/offers"],
+    queryKey: ["/api/company/offers"],
     enabled: isAuthenticated,
   });
 
@@ -124,16 +124,23 @@ export default function CompanyOffers() {
                 </DropdownMenu>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {offer.description || "No description"}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {offer.shortDescription || offer.description || "No description"}
+                  </p>
+                  {offer.primaryNiche && (
+                    <Badge variant="outline" className="text-xs">
+                      {offer.primaryNiche}
+                    </Badge>
+                  )}
+                </div>
                 
                 <div className="grid grid-cols-3 gap-4 pt-3 border-t">
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground mb-1">Commission</div>
                     <div className="text-sm font-semibold flex items-center justify-center gap-1">
                       <DollarSign className="h-3 w-3" />
-                      {offer.commissionRate || offer.commissionAmount || 0}
+                      {offer.commissionPercentage || offer.commissionAmount || offer.commissionRate || 0}
                       {offer.commissionType === 'per_sale' && '%'}
                     </div>
                   </div>

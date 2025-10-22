@@ -9,6 +9,7 @@ import {
   insertCreatorProfileSchema,
   insertCompanyProfileSchema,
   insertOfferSchema,
+  createOfferSchema,
   insertOfferVideoSchema,
   insertApplicationSchema,
   insertMessageSchema,
@@ -150,7 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).send("Company not approved");
       }
 
-      const validated = insertOfferSchema.parse(req.body);
+      const validated = createOfferSchema.parse(req.body);
       const offer = await storage.createOffer({
         ...validated,
         companyId: companyProfile.id,
@@ -159,6 +160,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(offer);
     } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+      }
+      console.error('[offers] Error creating offer:', error);
       res.status(500).send(error.message);
     }
   });
@@ -564,6 +569,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company routes
+  app.get("/api/company/offers", requireAuth, requireRole('company'), async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const companyProfile = await storage.getCompanyProfile(userId);
+      
+      if (!companyProfile) {
+        return res.status(404).send("Company profile not found");
+      }
+
+      const offers = await storage.getOffersByCompany(companyProfile.id);
+      res.json(offers);
+    } catch (error: any) {
+      console.error('[company/offers] Error getting company offers:', error);
+      res.status(500).send(error.message);
+    }
+  });
+
   app.get("/api/company/stats", requireAuth, requireRole('company'), async (req, res) => {
     try {
       const userId = (req.user as any).id;

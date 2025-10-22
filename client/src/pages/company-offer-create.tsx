@@ -26,7 +26,10 @@ export default function CompanyOfferCreate() {
 
   const [formData, setFormData] = useState({
     title: "",
-    description: "",
+    productName: "",
+    shortDescription: "",
+    fullDescription: "",
+    primaryNiche: "",
     productUrl: "",
     commissionType: "per_sale" as const,
     commissionRate: "",
@@ -49,11 +52,20 @@ export default function CompanyOfferCreate() {
 
   const createOfferMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return await apiRequest("/api/offers", "POST", {
-        ...data,
-        commissionRate: data.commissionRate ? parseFloat(data.commissionRate) : null,
-        commissionAmount: data.commissionAmount ? parseFloat(data.commissionAmount) : null,
-      });
+      // Build payload that exactly matches createOfferSchema
+      const payload: any = {
+        title: data.title,
+        productName: data.productName,
+        shortDescription: data.shortDescription,
+        fullDescription: data.fullDescription,
+        primaryNiche: data.primaryNiche,
+        productUrl: data.productUrl,
+        commissionType: data.commissionType,
+        commissionPercentage: data.commissionType === "per_sale" && data.commissionRate ? data.commissionRate : null,
+        commissionAmount: data.commissionType !== "per_sale" && data.commissionAmount ? data.commissionAmount : null,
+      };
+      
+      return await apiRequest("POST", "/api/offers", payload);
     },
     onSuccess: () => {
       toast({
@@ -84,10 +96,37 @@ export default function CompanyOfferCreate() {
       return;
     }
 
-    if (!formData.description.trim()) {
+    if (!formData.productName.trim()) {
       toast({
         title: "Validation Error",
-        description: "Please enter an offer description",
+        description: "Please enter a product name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.shortDescription.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a short description",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.fullDescription.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a full description",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.primaryNiche.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a primary niche",
         variant: "destructive",
       });
       return;
@@ -102,6 +141,16 @@ export default function CompanyOfferCreate() {
       return;
     }
 
+    // Validate URL format
+    if (formData.productUrl.trim() && !formData.productUrl.match(/^https?:\/\/.+/i) && !formData.productUrl.includes('.')) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid URL (e.g., https://example.com or example.com)",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (formData.commissionType === "per_sale" && !formData.commissionRate) {
       toast({
         title: "Validation Error",
@@ -111,6 +160,18 @@ export default function CompanyOfferCreate() {
       return;
     }
 
+    if (formData.commissionType === "per_sale" && formData.commissionRate) {
+      const rate = parseFloat(formData.commissionRate);
+      if (isNaN(rate) || rate <= 0 || rate > 100) {
+        toast({
+          title: "Validation Error",
+          description: "Commission rate must be between 0 and 100",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (formData.commissionType !== "per_sale" && !formData.commissionAmount) {
       toast({
         title: "Validation Error",
@@ -118,6 +179,18 @@ export default function CompanyOfferCreate() {
         variant: "destructive",
       });
       return;
+    }
+
+    if (formData.commissionType !== "per_sale" && formData.commissionAmount) {
+      const amount = parseFloat(formData.commissionAmount);
+      if (isNaN(amount) || amount <= 0) {
+        toast({
+          title: "Validation Error",
+          description: "Commission amount must be greater than 0",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     createOfferMutation.mutate(formData);
@@ -160,20 +233,73 @@ export default function CompanyOfferCreate() {
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="e.g., Premium Fitness App Affiliate Program"
+                maxLength={100}
                 data-testid="input-title"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description *</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe your offer, target audience, and what makes it special..."
-                rows={5}
-                data-testid="input-description"
+              <Label htmlFor="productName">Product Name *</Label>
+              <Input
+                id="productName"
+                value={formData.productName}
+                onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+                placeholder="e.g., FitPro Premium"
+                data-testid="input-product-name"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="shortDescription">Short Description * (Max 200 characters)</Label>
+              <Textarea
+                id="shortDescription"
+                value={formData.shortDescription}
+                onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
+                placeholder="Brief summary for search results and previews..."
+                maxLength={200}
+                rows={2}
+                data-testid="input-short-description"
+              />
+              <p className="text-xs text-muted-foreground">
+                {formData.shortDescription.length}/200 characters
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fullDescription">Full Description *</Label>
+              <Textarea
+                id="fullDescription"
+                value={formData.fullDescription}
+                onChange={(e) => setFormData({ ...formData, fullDescription: e.target.value })}
+                placeholder="Detailed description of your offer, target audience, benefits, and what makes it special..."
+                rows={6}
+                data-testid="input-full-description"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="primaryNiche">Primary Niche *</Label>
+              <Select
+                value={formData.primaryNiche}
+                onValueChange={(value) => setFormData({ ...formData, primaryNiche: value })}
+              >
+                <SelectTrigger id="primaryNiche" data-testid="select-primary-niche">
+                  <SelectValue placeholder="Select a niche" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fitness">Fitness & Health</SelectItem>
+                  <SelectItem value="tech">Technology & Software</SelectItem>
+                  <SelectItem value="beauty">Beauty & Fashion</SelectItem>
+                  <SelectItem value="food">Food & Cooking</SelectItem>
+                  <SelectItem value="gaming">Gaming</SelectItem>
+                  <SelectItem value="finance">Finance & Investing</SelectItem>
+                  <SelectItem value="education">Education & Learning</SelectItem>
+                  <SelectItem value="travel">Travel & Lifestyle</SelectItem>
+                  <SelectItem value="home">Home & Garden</SelectItem>
+                  <SelectItem value="entertainment">Entertainment</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
