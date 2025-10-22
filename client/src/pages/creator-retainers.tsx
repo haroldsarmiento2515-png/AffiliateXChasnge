@@ -64,14 +64,13 @@ export default function CreatorRetainers() {
   const applyMutation = useMutation({
     mutationFn: async (data: ApplyRetainerForm) => {
       const payload = {
-        contractId: selectedContract.id,
         message: data.message,
         portfolioLinks: data.portfolioLinks
           ? data.portfolioLinks.split(",").map((link) => link.trim()).filter(Boolean)
           : [],
         proposedStartDate: data.proposedStartDate || undefined,
       };
-      return await apiRequest("POST", "/api/retainer-applications", payload);
+      return await apiRequest("POST", `/api/creator/retainer-contracts/${selectedContract.id}/apply`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/creator/retainer-applications"] });
