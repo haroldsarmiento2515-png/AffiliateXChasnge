@@ -102,7 +102,38 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### Admin Review Management Security Hardening (Latest - October 2025)
+### Offer Video Upload System (Latest - October 2025)
+
+**Core Features:**
+- **6-12 Video Requirement**: Enforces minimum 6 videos and maximum 12 videos per offer
+- **Video Upload Interface**: Integrated Uppy file uploader with drag-and-drop and file browser
+- **Video Metadata**: Captures title (required), description, creator credit, and original platform (e.g., TikTok, Instagram)
+- **Object Storage Integration**: Videos uploaded to Google Cloud Storage with public ACL
+- **Video Management UI**: Grid display with video cards showing title, description, and delete buttons
+- **Real-time Validation**: UI shows video count (X of 12) and alerts when minimum requirement not met
+- **Authorization**: Only company that owns the offer can add/delete videos
+
+**Technical Implementation:**
+- **API Endpoints**: 
+  - GET /api/offers/:offerId/videos - Fetch all videos for an offer
+  - POST /api/offers/:offerId/videos - Upload and save video with metadata
+  - DELETE /api/offer-videos/:id - Delete a specific video
+- **Database Schema**: `offerVideos` table with fields: id, offerId, videoUrl (path), title, description, creatorCredit, originalPlatform, thumbnailUrl, orderIndex
+- **Storage**: Videos stored in object storage with only path saved in database
+- **UI Components**: Video upload dialog with form validation, video grid display, and count indicator
+- **Uppy Configuration**: Custom CSS handling due to Vite resolution - styles managed via component logic
+
+**User Flow:**
+1. Company creates/edits an offer and navigates to offer detail page
+2. System displays video count and alerts if less than 6 videos uploaded
+3. Company clicks "Add Video" button to open upload dialog
+4. Company uploads video file via Uppy interface
+5. Company fills in video metadata (title required)
+6. System saves video to object storage and creates database record
+7. Video appears in grid with option to delete
+8. Process repeats until 6-12 videos are uploaded
+
+### Admin Review Management Security Hardening (October 2025)
 
 **Security Improvements:**
 - **Input Validation**: Added Zod validation schemas (`adminReviewUpdateSchema`, `adminNoteSchema`) to prevent mass-assignment vulnerabilities
