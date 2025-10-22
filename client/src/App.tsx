@@ -24,6 +24,7 @@ import CompanyOfferDetail from "@/pages/company-offer-detail";
 import CompanyApplications from "@/pages/company-applications";
 import CompanyCreators from "@/pages/company-creators";
 import CompanyReviews from "@/pages/company-reviews";
+import CompanyVideos from "@/pages/company-videos";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminReviews from "@/pages/admin-reviews";
 import AdminCompanies from "@/pages/admin-companies";
@@ -87,6 +88,7 @@ function Router() {
                     <Route path="/company/offers" component={CompanyOffers} />
                     <Route path="/company/offers/create" component={CompanyOfferCreate} />
                     <Route path="/company/offers/:id" component={CompanyOfferDetail} />
+                    <Route path="/company/videos" component={CompanyVideos} />
                     <Route path="/company/applications" component={CompanyApplications} />
                     <Route path="/company/creators" component={CompanyCreators} />
                     <Route path="/company/analytics" component={Analytics} />

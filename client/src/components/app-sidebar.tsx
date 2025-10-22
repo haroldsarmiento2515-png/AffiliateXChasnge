@@ -35,6 +35,7 @@ import {
   Zap,
   ChevronDown,
   LogOut,
+  Video,
 } from "lucide-react";
 
 export function AppSidebar() {
@@ -84,6 +85,11 @@ export function AppSidebar() {
       title: "My Offers",
       url: "/company/offers",
       icon: TrendingUp,
+    },
+    {
+      title: "Videos",
+      url: "/company/videos",
+      icon: Video,
     },
     {
       title: "Applications",
