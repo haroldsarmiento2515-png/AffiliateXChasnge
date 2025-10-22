@@ -90,6 +90,21 @@ async function exportDatabase() {
     data.payments = payments;
     console.log(`  ✓ Payments: ${payments.length} records`);
 
+    // Retainer contracts
+    const retainerContracts = await db.select().from(schema.retainerContracts);
+    data.retainerContracts = retainerContracts;
+    console.log(`  ✓ Retainer Contracts: ${retainerContracts.length} records`);
+
+    // Retainer applications
+    const retainerApplications = await db.select().from(schema.retainerApplications);
+    data.retainerApplications = retainerApplications;
+    console.log(`  ✓ Retainer Applications: ${retainerApplications.length} records`);
+
+    // Retainer deliverables
+    const retainerDeliverables = await db.select().from(schema.retainerDeliverables);
+    data.retainerDeliverables = retainerDeliverables;
+    console.log(`  ✓ Retainer Deliverables: ${retainerDeliverables.length} records`);
+
     // Write to file
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `database-export-${timestamp}.json`;
