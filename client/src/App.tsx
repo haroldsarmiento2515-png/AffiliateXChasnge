@@ -15,6 +15,8 @@ import Applications from "@/pages/applications";
 import Analytics from "@/pages/analytics";
 import Messages from "@/pages/messages";
 import Favorites from "@/pages/favorites";
+import CreatorRetainers from "@/pages/creator-retainers";
+import CreatorRetainerDetail from "@/pages/creator-retainer-detail";
 import Settings from "@/pages/settings";
 import PaymentSettings from "@/pages/payment-settings";
 import CompanyDashboard from "@/pages/company-dashboard";
@@ -25,6 +27,8 @@ import CompanyApplications from "@/pages/company-applications";
 import CompanyCreators from "@/pages/company-creators";
 import CompanyReviews from "@/pages/company-reviews";
 import CompanyVideos from "@/pages/company-videos";
+import CompanyRetainers from "@/pages/company-retainers";
+import CompanyRetainerDetail from "@/pages/company-retainer-detail";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminReviews from "@/pages/admin-reviews";
 import AdminCompanies from "@/pages/admin-companies";
@@ -72,6 +76,8 @@ function Router() {
                     <Route path="/creator/dashboard" component={CreatorDashboard} />
                     <Route path="/browse" component={Browse} />
                     <Route path="/offers/:id" component={OfferDetail} />
+                    <Route path="/retainers" component={CreatorRetainers} />
+                    <Route path="/retainers/:id" component={CreatorRetainerDetail} />
                     <Route path="/applications" component={Applications} />
                     <Route path="/analytics" component={Analytics} />
                     <Route path="/messages" component={Messages} />
@@ -89,6 +95,8 @@ function Router() {
                     <Route path="/company/offers/create" component={CompanyOfferCreate} />
                     <Route path="/company/offers/:id" component={CompanyOfferDetail} />
                     <Route path="/company/videos" component={CompanyVideos} />
+                    <Route path="/company/retainers" component={CompanyRetainers} />
+                    <Route path="/company/retainers/:id" component={CompanyRetainerDetail} />
                     <Route path="/company/applications" component={CompanyApplications} />
                     <Route path="/company/creators" component={CompanyCreators} />
                     <Route path="/company/analytics" component={Analytics} />

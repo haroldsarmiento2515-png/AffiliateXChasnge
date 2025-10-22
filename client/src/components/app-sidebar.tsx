@@ -36,6 +36,7 @@ import {
   ChevronDown,
   LogOut,
   Video,
+  CalendarClock,
 } from "lucide-react";
 
 export function AppSidebar() {
@@ -52,6 +53,11 @@ export function AppSidebar() {
       title: "Browse Offers",
       url: "/browse",
       icon: TrendingUp,
+    },
+    {
+      title: "Monthly Retainers",
+      url: "/retainers",
+      icon: CalendarClock,
     },
     {
       title: "My Applications",
@@ -90,6 +96,11 @@ export function AppSidebar() {
       title: "Videos",
       url: "/company/videos",
       icon: Video,
+    },
+    {
+      title: "Monthly Retainers",
+      url: "/company/retainers",
+      icon: CalendarClock,
     },
     {
       title: "Applications",
