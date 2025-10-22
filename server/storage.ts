@@ -16,6 +16,9 @@ import {
   clickEvents,
   paymentSettings,
   payments,
+  retainerContracts,
+  retainerApplications,
+  retainerDeliverables,
   type User,
   type UpsertUser,
   type InsertUser,
@@ -41,6 +44,12 @@ import {
   type InsertPaymentSetting,
   type Payment,
   type InsertPayment,
+  type RetainerContract,
+  type InsertRetainerContract,
+  type RetainerApplication,
+  type InsertRetainerApplication,
+  type RetainerDeliverable,
+  type InsertRetainerDeliverable,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -129,6 +138,36 @@ export interface IStorage {
   getPaymentsByCompany(companyId: string): Promise<Payment[]>;
   getAllPayments(): Promise<any[]>;
   updatePaymentStatus(id: string, status: string, updates?: Partial<InsertPayment>): Promise<Payment | undefined>;
+
+  // Retainer Contracts
+  getRetainerContract(id: string): Promise<any>;
+  getRetainerContracts(filters?: any): Promise<any[]>;
+  getRetainerContractsByCompany(companyId: string): Promise<any[]>;
+  getRetainerContractsByCreator(creatorId: string): Promise<any[]>;
+  getOpenRetainerContracts(): Promise<any[]>;
+  createRetainerContract(contract: any): Promise<any>;
+  updateRetainerContract(id: string, updates: any): Promise<any>;
+  deleteRetainerContract(id: string): Promise<void>;
+
+  // Retainer Applications
+  getRetainerApplication(id: string): Promise<any>;
+  getRetainerApplicationsByContract(contractId: string): Promise<any[]>;
+  getRetainerApplicationsByCreator(creatorId: string): Promise<any[]>;
+  createRetainerApplication(application: any): Promise<any>;
+  updateRetainerApplication(id: string, updates: any): Promise<any>;
+  approveRetainerApplication(id: string, contractId: string, creatorId: string): Promise<any>;
+  rejectRetainerApplication(id: string): Promise<any>;
+
+  // Retainer Deliverables
+  getRetainerDeliverable(id: string): Promise<any>;
+  getRetainerDeliverablesByContract(contractId: string): Promise<any[]>;
+  getRetainerDeliverablesByCreator(creatorId: string): Promise<any[]>;
+  getRetainerDeliverablesForMonth(contractId: string, monthNumber: number): Promise<any[]>;
+  createRetainerDeliverable(deliverable: any): Promise<any>;
+  updateRetainerDeliverable(id: string, updates: any): Promise<any>;
+  approveRetainerDeliverable(id: string, reviewNotes?: string): Promise<any>;
+  rejectRetainerDeliverable(id: string, reviewNotes: string): Promise<any>;
+  requestRevision(id: string, reviewNotes: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -843,6 +882,301 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(payments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Retainer Contracts
+  async getRetainerContract(id: string): Promise<any> {
+    const result = await db
+      .select()
+      .from(retainerContracts)
+      .leftJoin(companyProfiles, eq(retainerContracts.companyId, companyProfiles.id))
+      .leftJoin(users, eq(companyProfiles.userId, users.id))
+      .where(eq(retainerContracts.id, id))
+      .limit(1);
+    
+    if (result.length === 0) return undefined;
+    
+    return {
+      ...result[0].retainer_contracts,
+      company: result[0].company_profiles,
+      companyUser: result[0].users,
+    };
+  }
+
+  async getRetainerContracts(filters?: any): Promise<any[]> {
+    let query = db
+      .select()
+      .from(retainerContracts)
+      .leftJoin(companyProfiles, eq(retainerContracts.companyId, companyProfiles.id))
+      .leftJoin(users, eq(companyProfiles.userId, users.id));
+    
+    if (filters?.status) {
+      query = query.where(eq(retainerContracts.status, filters.status)) as any;
+    }
+    
+    const results = await query.orderBy(desc(retainerContracts.createdAt));
+    
+    return results.map((r: any) => ({
+      ...r.retainer_contracts,
+      company: r.company_profiles,
+      companyUser: r.users,
+    }));
+  }
+
+  async getRetainerContractsByCompany(companyId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(retainerContracts)
+      .where(eq(retainerContracts.companyId, companyId))
+      .orderBy(desc(retainerContracts.createdAt));
+    
+    return results;
+  }
+
+  async getRetainerContractsByCreator(creatorId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(retainerContracts)
+      .leftJoin(companyProfiles, eq(retainerContracts.companyId, companyProfiles.id))
+      .where(eq(retainerContracts.assignedCreatorId, creatorId))
+      .orderBy(desc(retainerContracts.createdAt));
+    
+    return results.map((r: any) => ({
+      ...r.retainer_contracts,
+      company: r.company_profiles,
+    }));
+  }
+
+  async getOpenRetainerContracts(): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(retainerContracts)
+      .leftJoin(companyProfiles, eq(retainerContracts.companyId, companyProfiles.id))
+      .leftJoin(users, eq(companyProfiles.userId, users.id))
+      .where(eq(retainerContracts.status, 'open'))
+      .orderBy(desc(retainerContracts.createdAt));
+    
+    return results.map((r: any) => ({
+      ...r.retainer_contracts,
+      company: r.company_profiles,
+      companyUser: r.users,
+    }));
+  }
+
+  async createRetainerContract(contract: InsertRetainerContract): Promise<RetainerContract> {
+    const result = await db.insert(retainerContracts).values(contract).returning();
+    return result[0];
+  }
+
+  async updateRetainerContract(id: string, updates: Partial<InsertRetainerContract>): Promise<RetainerContract | undefined> {
+    const result = await db
+      .update(retainerContracts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(retainerContracts.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteRetainerContract(id: string): Promise<void> {
+    await db.delete(retainerContracts).where(eq(retainerContracts.id, id));
+  }
+
+  // Retainer Applications
+  async getRetainerApplication(id: string): Promise<any> {
+    const result = await db
+      .select()
+      .from(retainerApplications)
+      .leftJoin(users, eq(retainerApplications.creatorId, users.id))
+      .leftJoin(creatorProfiles, eq(users.id, creatorProfiles.userId))
+      .leftJoin(retainerContracts, eq(retainerApplications.contractId, retainerContracts.id))
+      .where(eq(retainerApplications.id, id))
+      .limit(1);
+    
+    if (result.length === 0) return undefined;
+    
+    return {
+      ...result[0].retainer_applications,
+      creator: result[0].users,
+      creatorProfile: result[0].creator_profiles,
+      contract: result[0].retainer_contracts,
+    };
+  }
+
+  async getRetainerApplicationsByContract(contractId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(retainerApplications)
+      .leftJoin(users, eq(retainerApplications.creatorId, users.id))
+      .leftJoin(creatorProfiles, eq(users.id, creatorProfiles.userId))
+      .where(eq(retainerApplications.contractId, contractId))
+      .orderBy(desc(retainerApplications.createdAt));
+    
+    return results.map((r: any) => ({
+      ...r.retainer_applications,
+      creator: r.users,
+      creatorProfile: r.creator_profiles,
+    }));
+  }
+
+  async getRetainerApplicationsByCreator(creatorId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(retainerApplications)
+      .leftJoin(retainerContracts, eq(retainerApplications.contractId, retainerContracts.id))
+      .leftJoin(companyProfiles, eq(retainerContracts.companyId, companyProfiles.id))
+      .where(eq(retainerApplications.creatorId, creatorId))
+      .orderBy(desc(retainerApplications.createdAt));
+    
+    return results.map((r: any) => ({
+      ...r.retainer_applications,
+      contract: r.retainer_contracts,
+      company: r.company_profiles,
+    }));
+  }
+
+  async createRetainerApplication(application: InsertRetainerApplication): Promise<RetainerApplication> {
+    const result = await db.insert(retainerApplications).values(application).returning();
+    return result[0];
+  }
+
+  async updateRetainerApplication(id: string, updates: Partial<InsertRetainerApplication>): Promise<RetainerApplication | undefined> {
+    const result = await db
+      .update(retainerApplications)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(retainerApplications.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async approveRetainerApplication(id: string, contractId: string, creatorId: string): Promise<RetainerApplication | undefined> {
+    // Update application status to approved
+    const appResult = await db
+      .update(retainerApplications)
+      .set({ status: 'approved', updatedAt: new Date() })
+      .where(eq(retainerApplications.id, id))
+      .returning();
+    
+    // Update contract to assign creator and change status to in_progress
+    await db
+      .update(retainerContracts)
+      .set({
+        assignedCreatorId: creatorId,
+        status: 'in_progress',
+        startDate: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(retainerContracts.id, contractId));
+    
+    return appResult[0];
+  }
+
+  async rejectRetainerApplication(id: string): Promise<RetainerApplication | undefined> {
+    const result = await db
+      .update(retainerApplications)
+      .set({ status: 'rejected', updatedAt: new Date() })
+      .where(eq(retainerApplications.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Retainer Deliverables
+  async getRetainerDeliverable(id: string): Promise<any> {
+    const result = await db
+      .select()
+      .from(retainerDeliverables)
+      .where(eq(retainerDeliverables.id, id))
+      .limit(1);
+    return result[0];
+  }
+
+  async getRetainerDeliverablesByContract(contractId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(retainerDeliverables)
+      .where(eq(retainerDeliverables.contractId, contractId))
+      .orderBy(desc(retainerDeliverables.submittedAt));
+    return results;
+  }
+
+  async getRetainerDeliverablesByCreator(creatorId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(retainerDeliverables)
+      .leftJoin(retainerContracts, eq(retainerDeliverables.contractId, retainerContracts.id))
+      .where(eq(retainerDeliverables.creatorId, creatorId))
+      .orderBy(desc(retainerDeliverables.submittedAt));
+    
+    return results.map((r: any) => ({
+      ...r.retainer_deliverables,
+      contract: r.retainer_contracts,
+    }));
+  }
+
+  async getRetainerDeliverablesForMonth(contractId: string, monthNumber: number): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(retainerDeliverables)
+      .where(
+        and(
+          eq(retainerDeliverables.contractId, contractId),
+          eq(retainerDeliverables.monthNumber, monthNumber)
+        )
+      )
+      .orderBy(retainerDeliverables.videoNumber);
+    return results;
+  }
+
+  async createRetainerDeliverable(deliverable: InsertRetainerDeliverable): Promise<RetainerDeliverable> {
+    const result = await db.insert(retainerDeliverables).values(deliverable).returning();
+    return result[0];
+  }
+
+  async updateRetainerDeliverable(id: string, updates: Partial<InsertRetainerDeliverable>): Promise<RetainerDeliverable | undefined> {
+    const result = await db
+      .update(retainerDeliverables)
+      .set(updates)
+      .where(eq(retainerDeliverables.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async approveRetainerDeliverable(id: string, reviewNotes?: string): Promise<RetainerDeliverable | undefined> {
+    const result = await db
+      .update(retainerDeliverables)
+      .set({
+        status: 'approved',
+        reviewedAt: new Date(),
+        reviewNotes,
+      })
+      .where(eq(retainerDeliverables.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async rejectRetainerDeliverable(id: string, reviewNotes: string): Promise<RetainerDeliverable | undefined> {
+    const result = await db
+      .update(retainerDeliverables)
+      .set({
+        status: 'rejected',
+        reviewedAt: new Date(),
+        reviewNotes,
+      })
+      .where(eq(retainerDeliverables.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async requestRevision(id: string, reviewNotes: string): Promise<RetainerDeliverable | undefined> {
+    const result = await db
+      .update(retainerDeliverables)
+      .set({
+        status: 'revision_requested',
+        reviewedAt: new Date(),
+        reviewNotes,
+      })
+      .where(eq(retainerDeliverables.id, id))
       .returning();
     return result[0];
   }
