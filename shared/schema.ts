@@ -23,6 +23,9 @@ export const commissionTypeEnum = pgEnum('commission_type', ['per_sale', 'per_le
 export const applicationStatusEnum = pgEnum('application_status', ['pending', 'approved', 'active', 'completed', 'rejected']);
 export const payoutMethodEnum = pgEnum('payout_method', ['etransfer', 'wire', 'paypal', 'crypto']);
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'processing', 'completed', 'failed', 'refunded']);
+export const retainerStatusEnum = pgEnum('retainer_status', ['open', 'in_progress', 'completed', 'cancelled', 'paused']);
+export const retainerApplicationStatusEnum = pgEnum('retainer_application_status', ['pending', 'approved', 'rejected']);
+export const deliverableStatusEnum = pgEnum('deliverable_status', ['pending_review', 'approved', 'revision_requested', 'rejected']);
 
 // Session storage table (Required for Replit Auth)
 export const sessions = pgTable(
@@ -475,6 +478,97 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
   }),
 }));
 
+// Retainer Contracts - Monthly retainer job postings
+export const retainerContracts = pgTable("retainer_contracts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companyProfiles.id, { onDelete: 'cascade' }),
+  title: varchar("title", { length: 150 }).notNull(),
+  description: text("description").notNull(),
+  monthlyAmount: decimal("monthly_amount", { precision: 10, scale: 2 }).notNull(),
+  videosPerMonth: integer("videos_per_month").notNull(),
+  durationMonths: integer("duration_months").notNull(),
+  requiredPlatform: varchar("required_platform").notNull(),
+  platformAccountDetails: text("platform_account_details"),
+  contentGuidelines: text("content_guidelines"),
+  brandSafetyRequirements: text("brand_safety_requirements"),
+  minimumFollowers: integer("minimum_followers"),
+  niches: text("niches").array().default(sql`ARRAY[]::text[]`),
+  status: retainerStatusEnum("status").notNull().default('open'),
+  assignedCreatorId: varchar("assigned_creator_id").references(() => users.id, { onDelete: 'set null' }),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const retainerContractsRelations = relations(retainerContracts, ({ one, many }) => ({
+  company: one(companyProfiles, {
+    fields: [retainerContracts.companyId],
+    references: [companyProfiles.id],
+  }),
+  assignedCreator: one(users, {
+    fields: [retainerContracts.assignedCreatorId],
+    references: [users.id],
+  }),
+  applications: many(retainerApplications),
+  deliverables: many(retainerDeliverables),
+}));
+
+// Retainer Applications - When creators apply for retainer contracts
+export const retainerApplications = pgTable("retainer_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractId: varchar("contract_id").notNull().references(() => retainerContracts.id, { onDelete: 'cascade' }),
+  creatorId: varchar("creator_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  message: text("message").notNull(),
+  portfolioLinks: text("portfolio_links").array().default(sql`ARRAY[]::text[]`),
+  proposedStartDate: timestamp("proposed_start_date"),
+  status: retainerApplicationStatusEnum("status").notNull().default('pending'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const retainerApplicationsRelations = relations(retainerApplications, ({ one }) => ({
+  contract: one(retainerContracts, {
+    fields: [retainerApplications.contractId],
+    references: [retainerContracts.id],
+  }),
+  creator: one(users, {
+    fields: [retainerApplications.creatorId],
+    references: [users.id],
+  }),
+}));
+
+// Retainer Deliverables - Track individual video submissions
+export const retainerDeliverables = pgTable("retainer_deliverables", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractId: varchar("contract_id").notNull().references(() => retainerContracts.id, { onDelete: 'cascade' }),
+  creatorId: varchar("creator_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  monthNumber: integer("month_number").notNull(),
+  videoNumber: integer("video_number").notNull(),
+  videoUrl: varchar("video_url").notNull(),
+  platformUrl: varchar("platform_url"),
+  title: varchar("title", { length: 200 }),
+  description: text("description"),
+  viewCount: integer("view_count"),
+  engagement: jsonb("engagement"),
+  status: deliverableStatusEnum("status").notNull().default('pending_review'),
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const retainerDeliverablesRelations = relations(retainerDeliverables, ({ one }) => ({
+  contract: one(retainerContracts, {
+    fields: [retainerDeliverables.contractId],
+    references: [retainerContracts.id],
+  }),
+  creator: one(users, {
+    fields: [retainerDeliverables.creatorId],
+    references: [users.id],
+  }),
+}));
+
 // System Settings (admin-configurable platform settings)
 export const systemSettings = pgTable("system_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -514,6 +608,10 @@ export const insertFavoriteSchema = createInsertSchema(favorites).omit({ id: tru
 export const insertPaymentSettingSchema = createInsertSchema(paymentSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true, initiatedAt: true, completedAt: true, failedAt: true, refundedAt: true });
 export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRetainerContractSchema = createInsertSchema(retainerContracts).omit({ id: true, createdAt: true, updatedAt: true, assignedCreatorId: true, startDate: true, endDate: true });
+export const createRetainerContractSchema = createInsertSchema(retainerContracts).omit({ id: true, companyId: true, createdAt: true, updatedAt: true, assignedCreatorId: true, startDate: true, endDate: true, status: true });
+export const insertRetainerApplicationSchema = createInsertSchema(retainerApplications).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRetainerDeliverableSchema = createInsertSchema(retainerDeliverables).omit({ id: true, createdAt: true, submittedAt: true, reviewedAt: true });
 
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -541,3 +639,9 @@ export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = z.infer<typeof insertSystemSettingSchema>;
+export type RetainerContract = typeof retainerContracts.$inferSelect;
+export type InsertRetainerContract = z.infer<typeof insertRetainerContractSchema>;
+export type RetainerApplication = typeof retainerApplications.$inferSelect;
+export type InsertRetainerApplication = z.infer<typeof insertRetainerApplicationSchema>;
+export type RetainerDeliverable = typeof retainerDeliverables.$inferSelect;
+export type InsertRetainerDeliverable = z.infer<typeof insertRetainerDeliverableSchema>;
