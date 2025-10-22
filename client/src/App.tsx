@@ -67,6 +67,7 @@ function Router() {
                 {user?.role === 'creator' && (
                   <>
                     <Route path="/" component={CreatorDashboard} />
+                    <Route path="/creator/dashboard" component={CreatorDashboard} />
                     <Route path="/browse" component={Browse} />
                     <Route path="/offers/:id" component={OfferDetail} />
                     <Route path="/applications" component={Applications} />
@@ -81,6 +82,7 @@ function Router() {
                   <>
                     <Route path="/" component={CompanyDashboard} />
                     <Route path="/company" component={CompanyDashboard} />
+                    <Route path="/company/dashboard" component={CompanyDashboard} />
                     <Route path="/company/offers" component={CompanyOffers} />
                     <Route path="/company/offers/create" component={CompanyOfferCreate} />
                     <Route path="/company/applications" component={CompanyApplications} />
@@ -96,6 +98,7 @@ function Router() {
                   <>
                     <Route path="/" component={AdminDashboard} />
                     <Route path="/admin" component={AdminDashboard} />
+                    <Route path="/admin/dashboard" component={AdminDashboard} />
                     <Route path="/admin/companies" component={AdminCompanies} />
                     <Route path="/admin/offers" component={AdminOffers} />
                     <Route path="/admin/reviews" component={AdminReviews} />

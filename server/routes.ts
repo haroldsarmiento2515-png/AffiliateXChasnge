@@ -280,15 +280,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/company/applications", requireAuth, requireRole('company'), async (req, res) => {
     try {
       const userId = (req.user as any).id;
+      console.log('[/api/company/applications] userId:', userId);
       const companyProfile = await storage.getCompanyProfile(userId);
+      console.log('[/api/company/applications] companyProfile:', companyProfile);
       if (!companyProfile) {
+        console.log('[/api/company/applications] No company profile found for user:', userId);
         return res.status(404).send("Company profile not found");
       }
       
       // Pass company profile ID, not user ID
       const applications = await storage.getApplicationsByCompany(companyProfile.id);
+      console.log('[/api/company/applications] Found', applications.length, 'applications');
       res.json(applications);
     } catch (error: any) {
+      console.error('[/api/company/applications] Error:', error);
       res.status(500).send(error.message);
     }
   });
