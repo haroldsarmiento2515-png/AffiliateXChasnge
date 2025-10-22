@@ -68,7 +68,7 @@ export default function CreatorRetainers() {
         portfolioLinks: data.portfolioLinks
           ? data.portfolioLinks.split(",").map((link) => link.trim()).filter(Boolean)
           : [],
-        proposedStartDate: data.proposedStartDate ? new Date(data.proposedStartDate) : undefined,
+        proposedStartDate: data.proposedStartDate || undefined,
       };
       return await apiRequest("POST", `/api/creator/retainer-contracts/${selectedContract.id}/apply`, payload);
     },

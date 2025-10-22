@@ -1104,7 +1104,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/creator/retainer-contracts/:id/apply", requireAuth, requireRole('creator'), async (req, res) => {
     try {
       const userId = (req.user as any).id;
-      const validated = insertRetainerApplicationSchema.omit({ creatorId: true, contractId: true }).parse(req.body);
+      const body = {
+        ...req.body,
+        proposedStartDate: req.body.proposedStartDate ? new Date(req.body.proposedStartDate) : undefined,
+      };
+      const validated = insertRetainerApplicationSchema.omit({ creatorId: true, contractId: true }).parse(body);
       const application = await storage.createRetainerApplication({ ...validated, contractId: req.params.id, creatorId: userId });
       res.json(application);
     } catch (error: any) {
