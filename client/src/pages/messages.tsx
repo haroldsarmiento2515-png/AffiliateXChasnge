@@ -100,19 +100,23 @@ export default function Messages() {
   }, [isAuthenticated, isLoading, toast]);
 
   // WebSocket connection (only reconnect on auth changes, not UI state)
-  useEffect(() => {
-    if (!isAuthenticated) return;
+// WebSocket connection (only reconnect on auth changes, not UI state)
+useEffect(() => {
+  if (!isAuthenticated) return;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    let shouldReconnect = true; // Per-effect reconnect flag
-    
-    const connectWebSocket = () => {
-      try {
-        setIsConnecting(true);
-        const socket = new WebSocket(wsUrl);
-        
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.hostname;
+  const port = window.location.port || '3000';
+  const wsUrl = `${protocol}//${host}:${port}/ws`;
+  
+  let shouldReconnect = true; // Per-effect reconnect flag
+  
+  const connectWebSocket = () => {
+    try {
+      setIsConnecting(true);
+      const socket = new WebSocket(wsUrl);
+      
+      // Rest of your code...
         // Assign immediately so error/close handlers can identify this socket
         wsRef.current = socket;
         
